@@ -1,0 +1,13 @@
+{
+  "name": "iith-quest",
+  "version": "1.1.0",
+  "private": true,
+  "description": "8-bit IIT Hyderabad campus platformer. Static game in dist/, global Hall of Fame as a Netlify Function.",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node tools/test.js && node tools/test-scores.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
