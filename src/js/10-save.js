@@ -15,21 +15,31 @@ function scoreRun(run) {
 }
 
 const Save = (() => {
-  const fresh = () => ({ v: 1, char: 'boy', name: '', unlocked: 0, levels: {}, opts: { music: true, sfx: true, crt: true, upJumps: true }, keys: null });
+  const fresh = () => ({ v: 1, char: 'boy', name: '', unlocked: 0, levels: {}, opts: { music: true, sfx: true, crt: true, upJumps: true, abSwap: false, touchPos: null, padAlpha: null }, keys: null, token: '' });
   let data = fresh();
-  function apply() { Sound.setOpts({ music: data.opts.music, sfx: data.opts.sfx }); document.body.classList.toggle('crt', !!data.opts.crt);
-    Input.setBindings(data.keys, data.opts.upJumps !== false); if (typeof Game !== 'undefined' && Game.updateHint) Game.updateHint(); }
+  function apply() { Sound.setOpts({ music: data.opts.music, sfx: data.opts.sfx }); document.body.classList.toggle('crt', !!data.opts.crt); document.body.classList.toggle('abswap', !!data.opts.abSwap);
+    if (data.opts.padAlpha == null) document.body.style.removeProperty('--pad-a'); else document.body.style.setProperty('--pad-a', data.opts.padAlpha);
+    Input.setBindings(data.keys, data.opts.upJumps !== false); if (typeof Game !== 'undefined' && Game.updateHint) { Game.updateHint(); Game.applyTouchPos(); } }
   function load() {
     try {
       const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
       if (d && d.v === 1) data = Object.assign(fresh(), d, { opts: Object.assign(fresh().opts, d.opts) });
     } catch (e) { /* storage unavailable: play without saving */ }
-    apply();
+    fixId(); store(); apply();
+  }
+  // name holds the player's 7-digit roll number; token is this device's secret for claiming it on the global board
+  function fixId() {
+    if (!/^\d{7}$/.test(String(data.name || ''))) data.name = '';
+    if (!/^[A-Za-z0-9-]{16,64}$/.test(String(data.token || ''))) {
+      let t = ''; try { t = crypto.randomUUID(); } catch (e) {} if (!t) { for (let i = 0; i < 32; i++) t += Math.floor(Math.random() * 16).toString(16); }
+      data.token = t;
+    }
   }
   function store() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {} }
   function toggle(k) { data.opts[k] = !data.opts[k]; apply(); store(); }
+  function setOpt(k, v) { data.opts[k] = v; apply(); store(); }
   function setKeys(keys) { data.keys = keys; apply(); store(); }
-  function reset() { data = Object.assign(fresh(), { opts: data.opts, keys: data.keys, char: data.char, name: data.name }); store(); }
+  function reset() { data = Object.assign(fresh(), { opts: data.opts, keys: data.keys, char: data.char, name: data.name, token: data.token }); store(); }
   function record(run) {
     const r = scoreRun(run), prev = data.levels[run.level];
     r.best = !prev || r.score > prev.score;
@@ -40,7 +50,7 @@ const Save = (() => {
   function cgpa() { const v = Object.values(data.levels); return v.length ? v.reduce((s, l) => s + l.pts, 0) / v.length : 0; }
   function totalScore() { return Object.values(data.levels).reduce((s, l) => s + l.score, 0); }
   const hasProgress = () => data.unlocked > 0;
-  return { get data() { return data; }, load, store, toggle, setKeys, reset, record, cgpa, totalScore, hasProgress };
+  return { get data() { return data; }, load, store, toggle, setOpt, setKeys, reset, record, cgpa, totalScore, hasProgress };
 })();
 
 // ── Scoreboard ──────────────────────────────────────────────────────────────
@@ -52,7 +62,7 @@ const LocalBoard = {
   read() { try { return JSON.parse(localStorage.getItem(BOARD_KEY) || '[]') || []; } catch (e) { return []; } },
   async top(n) { return this.read().slice(0, n); },
   async submit(entry) {
-    let list = this.read().filter(e => !(e.name === entry.name && e.score <= entry.score));   // keep each name's best
+    let list = this.read().filter(e => /^\d{7}$/.test(e.name) && !(e.name === entry.name && e.score <= entry.score));   // keep each name's best
     if (!list.some(e => e.name === entry.name)) list.push(entry);
     list.sort((a, b) => b.score - a.score);
     try { localStorage.setItem(BOARD_KEY, JSON.stringify(list.slice(0, 20))); } catch (e) {}
@@ -64,14 +74,21 @@ const RemoteBoard = {
   async call(opts) {
     const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 7000);
     try { const r = await fetch(BOARD_URL + (opts ? '' : '?limit=20'), Object.assign({ signal: ctl.signal, headers: { 'content-type': 'application/json' } }, opts || {}));
-      if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); }
+      if (!r.ok) { const er = new Error('HTTP ' + r.status); er.status = r.status; throw er; } return await r.json(); }
     finally { clearTimeout(to); }
   },
   async top(n) { return ((await this.call()).entries || []).slice(0, n); },
   async submit(entry) { return this.call({ method: 'POST', body: JSON.stringify(entry) }); },
+  async claim(roll, token) { return this.call({ method: 'POST', body: JSON.stringify({ action: 'claim', roll, token }) }); },
 };
 const Leaderboard = {
-  note: '', global: false, rank: 0,
+  note: '', global: false, rank: 0, conflict: false,
+  // → 'ok' | 'taken' | 'offline' (offline: accepted for now, checked again when the score is sent)
+  async claim(roll) {
+    if (!RemoteBoard.available) return 'ok';
+    try { await RemoteBoard.claim(roll, Save.data.token); this.conflict = false; return 'ok'; }
+    catch (e) { return e.status === 409 ? 'taken' : e.status === 400 ? 'bad' : 'offline'; }
+  },
   async top(n) {
     if (RemoteBoard.available) {
       try {
@@ -86,12 +103,13 @@ const Leaderboard = {
     await LocalBoard.submit(entry).catch(() => {});
     if (!RemoteBoard.available) return;
     try { const r = await RemoteBoard.submit(entry); this.rank = r.rank || 0; try { localStorage.removeItem(PENDING_KEY); } catch (e) {} }
-    catch (e) { try { localStorage.setItem(PENDING_KEY, JSON.stringify(entry)); } catch (e2) {} }   // retry next time the board opens
+    catch (e) { if (e.status === 409 || e.status === 400) { this.conflict = e.status === 409; return; } try { localStorage.setItem(PENDING_KEY, JSON.stringify(entry)); } catch (e2) {} }   // retry next time the board opens
   },
   async flush() {
     let p = null; try { p = JSON.parse(localStorage.getItem(PENDING_KEY) || 'null'); } catch (e) {}
     if (!p) return;
-    try { const r = await RemoteBoard.submit(p); this.rank = r.rank || this.rank; localStorage.removeItem(PENDING_KEY); } catch (e) {}
+    try { const r = await RemoteBoard.submit(p); this.rank = r.rank || this.rank; localStorage.removeItem(PENDING_KEY); }
+    catch (e) { if (e.status === 409 || e.status === 400) { this.conflict = e.status === 409; try { localStorage.removeItem(PENDING_KEY); } catch (e2) {} } }
   },
 };
 

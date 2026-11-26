@@ -70,7 +70,7 @@ const LEVELS = [
     intro: 'WELCOME TO IIT HYDERABAD! FIND YOUR HOSTEL BEFORE REGISTRATION CLOSES. GRAB CREDITS ON THE WAY.',
     boss: { type: 'catch', title: 'REGISTRATION RUSH', how: 'CATCH YOUR DOCUMENTS. DODGE THE SPAM FLYERS!', good: ['ID', 'KEY', 'FORM'], bad: 'SPAM', secs: 26 },
     build(b) {
-      b.seg(18, s => s.deco('gate', 2).hint(8, 'ARROWS OR D-PAD TO MOVE').deco('lamp', 10).coins(11, 1, 4).deco('tree', 15))
+      b.seg(18, s => s.deco('gate', 2).hint(8, 'ARROWS OR STICK TO MOVE').deco('lamp', 10).coins(11, 1, 4).deco('tree', 15))
        .seg(12, s => s.hint(1, 'SPACE OR A TO JUMP').item('milk', 3, 2).wall(6, 2, 1).coins(6, 3, 2).deco('bench', 9))
        .seg(14, s => s.deco('cycle', 1).hint(2, 'STOMP THE BUGS!').coins(4, 1, 3).en('bug', 9).deco('tree', 12))
        .pit(2, s => s.arc(-1, 3, 4))

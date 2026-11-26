@@ -31,17 +31,27 @@ body.crt #screen::after { content: ""; position: absolute; inset: 10px; pointer-
 .btn { position: absolute; border: 0; padding: 0; margin: 0; font: 700 15px/1 ui-monospace, Menlo, Consolas, monospace; color: #f4efe6; background: #2c2440;
   box-shadow: 0 4px 0 #0b0a12, inset 0 2px 0 rgba(255, 255, 255, .16); touch-action: none; -webkit-appearance: none; appearance: none; }
 .btn.on { filter: brightness(1.45); box-shadow: 0 1px 0 #0b0a12, inset 0 2px 0 rgba(255, 255, 255, .16); }
-#dpad { width: 162px; height: 162px; }
-#dpad .d { width: 54px; height: 54px; border-radius: 9px; font-size: 13px; color: #8a8f98; }
-#dpad .up { left: 54px; top: 0; } #dpad .down { left: 54px; top: 108px; } #dpad .left { left: 0; top: 54px; } #dpad .right { left: 108px; top: 54px; }
-#dpad .hub { position: absolute; left: 54px; top: 54px; width: 54px; height: 54px; background: #2c2440; }
-#ab { width: 156px; height: 132px; }
+#dpad { width: 190px; height: 190px; }
+#stickBase { position: absolute; left: 5px; top: 5px; width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, #3a3050 0, #2a2233 68%, #1c1626 100%); box-shadow: 0 4px 0 #0b0a12, inset 0 0 0 4px rgba(255,255,255,.08); }
+#stickBase::before { content: ""; position: absolute; inset: 26px; border-radius: 50%; border: 2px dashed rgba(255,255,255,.12); }
+#stickKnob { position: absolute; left: 56px; top: 56px; width: 78px; height: 78px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #6a5d8a, #3b3354 70%); box-shadow: 0 4px 0 #0b0a12, inset 0 2px 0 rgba(255,255,255,.2); touch-action: none; pointer-events: none; }
+#ab { width: 156px; height: 72px; }
 #ab .rb { width: 72px; height: 72px; border-radius: 50%; font-size: 22px; }
-#ab .a { right: 0; top: 0; background: #b3262e; } #ab .b { left: 0; bottom: 0; background: #3b5d8f; }
+#ab .a { left: 0; top: 0; background: #b3262e; } #ab .b { right: 0; top: 0; background: #3b5d8f; }   /* default: A left, B right */
+body.abswap #ab .a { left: auto; right: 0; } body.abswap #ab .b { right: auto; left: 0; }   /* pause menu / options: BUTTONS swap */
 #startBtn { width: 76px; height: 26px; border-radius: 13px; font-size: 10px; letter-spacing: .14em; color: #cfd6e6; }
 
 body.touch #hint { display: none; }
 body.touch #pad { display: block; }
+
+/* Touch layout editor (Pause / Options → TOUCH LAYOUT); offsets saved in opts.touchPos */
+#editBar { display: none; position: fixed; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%); z-index: 50; gap: 8px; align-items: center;
+  background: rgba(11,10,18,.92); border: 2px solid #f2c14e; border-radius: 10px; padding: 8px 10px; font: 700 11px/1.2 ui-monospace, Menlo, monospace; color: #fff3c4; }
+#editBar { flex-wrap: wrap; justify-content: center; width: max-content; max-width: 92vw; }
+#editBar p { margin: 0 0 2px; width: 100%; text-align: center; }
+body.touchedit #editBar { display: flex; }
+body.touchedit #dpad, body.touchedit #ab { opacity: 1 !important; outline: 2px dashed #f2c14e; outline-offset: 4px; border-radius: 12px; }
+body.touchedit #screen { filter: brightness(.45); }
 
 /* ── Phones ──────────────────────────────────────────────────────────────────
    Both layouts keep the bottom-right ~96px (and bottom-left ~70px) clear, so the
@@ -55,9 +65,9 @@ body.touch.is-fs #fsBtn { opacity: .35; }
   body.touch #screen { padding: 0; border-radius: 0; box-shadow: none; background: #000; }
   body.touch.crt #screen::after { inset: 0; }
   body.touch #pad { position: fixed; inset: 0; pointer-events: none; }
-  body.touch #dpad, body.touch #ab, body.touch #startBtn, body.touch #fsBtn { position: absolute; pointer-events: auto; opacity: .55; }
+  body.touch #dpad, body.touch #ab, body.touch #startBtn, body.touch #fsBtn { position: absolute; pointer-events: auto; opacity: var(--pad-a, .55); }
   body.touch #dpad { left: max(12px, env(safe-area-inset-left)); bottom: max(28px, env(safe-area-inset-bottom)); transform: scale(.9); transform-origin: left bottom; }
-  body.touch #ab { right: max(12px, env(safe-area-inset-right)); bottom: max(104px, calc(env(safe-area-inset-bottom) + 96px)); transform: scale(.88); transform-origin: right bottom; }
+  body.touch #ab { right: max(12px, env(safe-area-inset-right)); bottom: max(78px, calc(env(safe-area-inset-bottom) + 70px)); transform: scale(.88); transform-origin: right bottom; }
   body.touch #startBtn { left: calc(50% - 14px); bottom: max(8px, env(safe-area-inset-bottom)); }
   body.touch #fsBtn { left: calc(50% - 66px); bottom: max(8px, env(safe-area-inset-bottom)); }
 }
@@ -70,16 +80,17 @@ body.touch.is-fs #fsBtn { opacity: .35; }
   body.touch.crt #screen::after { inset: 6px 6px 20px; }
   body.touch #pad { position: relative; flex: 1; width: 100%; max-width: 560px; min-height: 300px; }
   /* everything is placed inside the top part of the pad; the last 96px stay empty */
-  body.touch #dpad { position: absolute; left: 4%; top: calc((100% - 96px) * .42 - 81px); }
-  body.touch #ab { position: absolute; right: 4%; top: calc((100% - 96px) * .42 - 66px); }
-  body.touch #startBtn { left: calc(50% - 38px); top: calc((100% - 96px) * .42 + 92px); background: #8a7d68; color: #f4efe6; box-shadow: 0 3px 0 #6b5f4d; }
-  body.touch #fsBtn { position: absolute; left: calc(50% - 22px); top: calc((100% - 96px) * .42 - 96px); background: #8a7d68; color: #f4efe6; box-shadow: 0 3px 0 #6b5f4d; }
-  body.touch #dpad .d, body.touch #dpad .hub { background: #2a2233; }
-}
+  body.touch #dpad, body.touch #ab, body.touch #startBtn, body.touch #fsBtn { opacity: var(--pad-a, 1); }
+  body.touch #dpad { position: absolute; left: 4%; bottom: 100px; }
+  body.touch #ab { position: absolute; right: 4%; bottom: 100px; }
+  body.touch #startBtn { left: calc(50% - 12px); top: auto; bottom: 304px; background: #8a7d68; color: #f4efe6; box-shadow: 0 3px 0 #6b5f4d; }
+  body.touch #fsBtn { position: absolute; left: calc(50% - 64px); top: auto; bottom: 304px; background: #8a7d68; color: #f4efe6; box-shadow: 0 3px 0 #6b5f4d; }
+  }
 
 /* Dialogs (name entry, share card) */
 .modal { position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; background: rgba(11, 10, 18, .86); touch-action: auto; }
 .modal.open { display: flex; }
+.card .err { min-height: 1.2em; margin: 6px 0 0; color: #ff8a8a; font-size: 12px; }
 .card { display: flex; flex-direction: column; gap: 12px; width: min(300px, 100%); padding: 18px; box-sizing: border-box; background: #221a33; border: 2px solid #f2c14e; border-radius: 8px; color: #f4efe6;
   font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
 .card.wide { width: min(560px, 100%); }
@@ -97,13 +108,7 @@ body.touch.is-fs #fsBtn { opacity: .35; }
 <div id="app">
   <div id="screen"><canvas id="game" width="320" height="180"></canvas></div>
   <div id="pad" aria-hidden="true">
-    <div id="dpad">
-      <button class="btn d up" data-key="up" type="button">&#9650;</button>
-      <button class="btn d left" data-key="left" type="button">&#9664;</button>
-      <div class="hub"></div>
-      <button class="btn d right" data-key="right" type="button">&#9654;</button>
-      <button class="btn d down" data-key="down" type="button">&#9660;</button>
-    </div>
+    <div id="dpad"><div id="stickBase"></div><div id="stickKnob"></div></div>
     <div id="ab">
       <button class="btn rb b" data-key="b" type="button">B</button>
       <button class="btn rb a" data-key="a" type="button">A</button>
@@ -111,10 +116,13 @@ body.touch.is-fs #fsBtn { opacity: .35; }
     <button class="btn" id="startBtn" data-key="start" type="button">START</button>
     <button class="btn" id="fsBtn" type="button" aria-label="Full screen">&#x26F6;</button>
   </div>
+  <div id="editBar"><p>DRAG THE STICK OR A/B TO MOVE THEM</p><button class="ui ghost" id="editReset" type="button">Reset</button><button class="ui" id="editDone" type="button">Done</button></div>
   <div id="hint">Arrows / WASD move &middot; Space or Z jump &middot; X or Shift dash &middot; P pause</div>
 </div>
-<div class="modal" id="nameBox"><div class="card"><label for="nameInput">Your name (for the report card)</label>
-  <input id="nameInput" maxlength="10" autocomplete="off" spellcheck="false"><button class="ui" id="nameOk" type="button">OK</button></div></div>
+<div class="modal" id="nameBox"><div class="card"><label for="nameInput">Your 7-digit roll number</label>
+  <input id="nameInput" maxlength="7" inputmode="numeric" pattern="[0-9]*" autocomplete="off" spellcheck="false" placeholder="e.g. 2401234">
+  <p id="nameErr" class="err"></p>
+  <div class="row"><button class="ui" id="nameOk" type="button">OK</button><button class="ui ghost" id="nameCancel" type="button">Cancel</button></div></div></div>
 <div class="modal" id="shareBox"><div class="card wide"><img id="shareImg" alt="Your IITH Quest report card"><p id="shareMsg"></p>
   <div class="row"><button class="ui" id="shareBtn" type="button">Share</button><button class="ui" id="saveBtn" type="button">Save image</button>
   <button class="ui ghost" id="copyBtn" type="button">Copy caption</button><button class="ui ghost" id="shareClose" type="button">Close</button></div></div></div>
@@ -955,18 +963,42 @@ const Input = (() => {
     }
     function mark(k, on) { const el = document.querySelector('[data-key="' + k + '"]'); if (el) el.classList.toggle('on', on); }
     const pad = document.getElementById('pad');
+    // Analog thumb-stick (replaces the D-pad): one finger owns the stick until it lifts, so sliding
+    // left <-> right never mis-fires. Hysteresis stops flicker around the thresholds.
+    const stickEl = document.getElementById('dpad'), knob = document.getElementById('stickKnob');
+    let stickId = null, sx = 0, sy = 0;
+    const editing = () => document.body.classList.contains('touchedit');
+    const sdir = { left: false, right: false, up: false, down: false };
+    function stickSet(k, on) { if (sdir[k] !== on) { sdir[k] = on; setAll(TOUCHMAP[k], on); } }
+    function stickMove(cx, cy) {
+      const r = stickEl.getBoundingClientRect(), R = r.width / 2, mx = r.left + R, my = r.top + R;
+      let dx = cx - mx, dy = cy - my; const d = Math.hypot(dx, dy), lim = R * 0.62;
+      if (d > lim) { dx *= lim / d; dy *= lim / d; }
+      const sc = r.width / 190; knob.style.transform = 'translate(' + (dx / sc).toFixed(1) + 'px,' + (dy / sc).toFixed(1) + 'px)';
+      const nx = dx / lim, ny = dy / lim;
+      stickSet('left', nx < (sdir.left ? -0.22 : -0.4)); stickSet('right', nx > (sdir.right ? 0.22 : 0.4));
+      stickSet('up', ny < (sdir.up ? -0.35 : -0.55)); stickSet('down', ny > (sdir.down ? 0.35 : 0.55));
+    }
+    function stickEnd() { stickId = null; knob.style.transform = ''; for (const k in sdir) stickSet(k, false); }
+    const inStick = (x, y) => { const r = stickEl.getBoundingClientRect(); return x > r.left - 24 && x < r.right + 24 && y > r.top - 24 && y < r.bottom + 24; };
+    document.addEventListener('touchstart', e => { if (editing()) return; if (stickId === null) for (const t of e.changedTouches) if (inStick(t.clientX, t.clientY)) { stickId = t.identifier; stickMove(t.clientX, t.clientY); break; } }, { passive: false });
+    document.addEventListener('touchmove', e => { if (stickId !== null) for (const t of e.touches) if (t.identifier === stickId) stickMove(t.clientX, t.clientY); }, { passive: false });
+    ['touchend', 'touchcancel'].forEach(ev => document.addEventListener(ev, e => { if (stickId !== null) for (const t of e.changedTouches) if (t.identifier === stickId) stickEnd(); }));
+    stickEl.addEventListener('mousedown', e => { if (editing()) return; stickId = 'mouse'; stickMove(e.clientX, e.clientY); const mv = ev => stickMove(ev.clientX, ev.clientY), up = () => { stickEnd(); window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); }; window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up); });
     ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(ev => document.addEventListener(ev, e => {
       if (e.target && e.target.tagName === 'INPUT') return;
+      if (document.body.classList.contains('touchedit')) return;   // layout editor handles its own drags
       api.usedTouch = true; document.body.classList.add('touch'); Sound.unlock();
       scan(e);
       if (e.target && (pad.contains(e.target) || e.target === canvas)) e.preventDefault();
     }, { passive: false }));
     // Mouse on the pad buttons (desktop testing)
-    pad.addEventListener('mousedown', e => { const b = e.target.closest('[data-key]'); if (b) { Sound.unlock(); setAll(TOUCHMAP[b.dataset.key], true); const up = () => { setAll(TOUCHMAP[b.dataset.key], false); window.removeEventListener('mouseup', up); }; window.addEventListener('mouseup', up); } });
+    pad.addEventListener('mousedown', e => { if (document.body.classList.contains('touchedit')) return; const b = e.target.closest('[data-key]'); if (b) { Sound.unlock(); setAll(TOUCHMAP[b.dataset.key], true); const up = () => { setAll(TOUCHMAP[b.dataset.key], false); window.removeEventListener('mouseup', up); }; window.addEventListener('mouseup', up); } });
 
     window.addEventListener('pointerup', () => Sound.unlock());
     // Canvas taps / clicks → game coordinates
     canvas.addEventListener('pointerdown', e => {
+      if (document.body.classList.contains('touchedit')) return;
       Sound.unlock();
       const r = canvas.getBoundingClientRect();
       api.tap = { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
@@ -1067,7 +1099,7 @@ const LEVELS = [
     intro: 'WELCOME TO IIT HYDERABAD! FIND YOUR HOSTEL BEFORE REGISTRATION CLOSES. GRAB CREDITS ON THE WAY.',
     boss: { type: 'catch', title: 'REGISTRATION RUSH', how: 'CATCH YOUR DOCUMENTS. DODGE THE SPAM FLYERS!', good: ['ID', 'KEY', 'FORM'], bad: 'SPAM', secs: 26 },
     build(b) {
-      b.seg(18, s => s.deco('gate', 2).hint(8, 'ARROWS OR D-PAD TO MOVE').deco('lamp', 10).coins(11, 1, 4).deco('tree', 15))
+      b.seg(18, s => s.deco('gate', 2).hint(8, 'ARROWS OR STICK TO MOVE').deco('lamp', 10).coins(11, 1, 4).deco('tree', 15))
        .seg(12, s => s.hint(1, 'SPACE OR A TO JUMP').item('milk', 3, 2).wall(6, 2, 1).coins(6, 3, 2).deco('bench', 9))
        .seg(14, s => s.deco('cycle', 1).hint(2, 'STOMP THE BUGS!').coins(4, 1, 3).en('bug', 9).deco('tree', 12))
        .pit(2, s => s.arc(-1, 3, 4))
@@ -1328,7 +1360,7 @@ function PlayScene(index) {
   let coins, items, enemies, movers, springs, checks, goal;
   let shots = [], parts = [], texts = [];
   let cam = 0, frame = 0, timeLeft = totalTime, credits = 0, retries = 0, shake = 0;
-  let state = 'ready', stateT = 0, paused = false, pauseMenu = null;
+  let state = 'ready', stateT = 0, paused = false, pauseMenu = null, ctrl = null, sub = null;
   let checkpoint = { x: L.spawn.x, y: L.spawn.y }, god = false;   // god: test-only invincibility
 
   function spawnEnemies() {
@@ -1522,6 +1554,9 @@ function PlayScene(index) {
 
   function update() {
     if (paused) {
+      if (Game.editingTouch) return;   // touch layout editor open
+      if (ctrl) { ctrl.update(); return; }   // controls screen open from pause menu
+      if (sub) { if (Input.pressed.back) { Sound.sfx('back'); sub = null; } else sub.update(); return; }   // touch controls sub-menu
       if (Input.pressed.pause) { paused = false; Sound.sfx('back'); return; }
       pauseMenu.update(); return;
     }
@@ -1549,12 +1584,14 @@ function PlayScene(index) {
   }
 
   function openPause() {
-    paused = true; Sound.sfx('select');
+    paused = true; sub = null; Sound.sfx('select');
     pauseMenu = Menu([
       { label: 'RESUME', fn: () => { paused = false; } },
       { label: 'RESTART LEVEL', fn: () => Game.go(PlayScene(index)) },
       { label: () => 'MUSIC: ' + (Save.data.opts.music ? 'ON' : 'OFF'), fn: () => Save.toggle('music') },
       { label: () => 'SOUND FX: ' + (Save.data.opts.sfx ? 'ON' : 'OFF'), fn: () => Save.toggle('sfx') },
+      ...(Input.usedTouch ? [{ label: 'TOUCH CONTROLS', fn: () => { sub = TouchMenu(() => { sub = null; }); } }] : []),
+      { label: 'KEYBOARD CONTROLS', fn: () => { ctrl = ControlsScene(() => { ctrl = null; }); } },
       { label: 'QUIT TO MENU', fn: () => Game.go(TitleScene()) },
     ]);
   }
@@ -1675,10 +1712,12 @@ function PlayScene(index) {
       Font.draw(ctx, go ? 'GO!' : 'READY?', W / 2, 70, go ? '#9be88a' : '#fff3c4', { align: 'center', scale: 3, shadow: C.ink });
     }
     if (state === 'clear') Font.draw(ctx, 'STAGE CLEAR!', W / 2, 66, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
+    if (paused && ctrl) { ctrl.draw(ctx); return; }
     if (paused) {
       ctx.fillStyle = 'rgba(11,10,18,0.78)'; ctx.fillRect(0, 0, W, H);
-      Font.draw(ctx, 'PAUSED', W / 2, 30, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
-      pauseMenu.draw(ctx, W / 2, 64);
+      Font.draw(ctx, 'PAUSED', W / 2, 24, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
+      if (sub) { Font.draw(ctx, 'TOUCH CONTROLS', W / 2, 52, '#9fe3f0', { align: 'center' }); sub.draw(ctx, W / 2, 72, 18); }
+      else pauseMenu.draw(ctx, W / 2, 52, 15);
     }
   }
 
@@ -2110,8 +2149,8 @@ function CharScene() {
   let t = 0, focus = 1;   // 0 = name row, 1 = start
   const kinds = ['boy', 'girl'], art = { boy: Art.player('boy'), girl: Art.player('girl') };
   const cardX = i => 70 + i * 104;
-  function begin() { Save.store(); Sound.sfx('confirm'); Game.go(IntroScene(0)); }
-  function editName() { Game.askName(Save.data.name, n => { Save.data.name = n; Save.store(); }); }
+  function editName(then) { Game.askName(Save.data.name, n => { Save.data.name = n; Save.store(); if (then) then(); }); }
+  function begin() { if (!Save.data.name) { focus = 0; editName(begin); return; } Save.store(); Sound.sfx('confirm'); Game.go(IntroScene(0)); }
   return {
     update() {
       t++;
@@ -2133,11 +2172,11 @@ function CharScene() {
         Font.draw(ctx, k === 'boy' ? 'BOY' : 'GIRL', x + 38, 110, on ? '#f2c14e' : '#8a8f98', { align: 'center' });
       });
       Font.draw(ctx, '←', 56, 72, '#f2c14e', { align: 'center' }); Font.draw(ctx, '→', 264, 72, '#f2c14e', { align: 'center' });
-      const nm = 'NAME: ' + (Save.data.name || '(TAP TO SET)');
+      const nm = 'ROLL NO: ' + (Save.data.name || '(TAP TO SET)');
       Font.draw(ctx, nm, W / 2, 131, focus === 0 ? '#f2c14e' : C.white, { align: 'center', shadow: C.ink });
       panel(ctx, 100, 144, 120, 16, focus === 1 ? '#b3262e' : '#3d2434', focus === 1 ? '#f2c14e' : '#8a8f98');
       Font.draw(ctx, 'START SEMESTER', W / 2, 149, C.white, { align: 'center' });
-      Font.draw(ctx, '← → CHOOSE   ↑ ↓ NAME   A START   B BACK', W / 2, 167, '#8a8f98', { align: 'center' });
+      Font.draw(ctx, '← → CHOOSE   ↑ ↓ ROLL NO   A START   B BACK', W / 2, 167, '#8a8f98', { align: 'center' });
     },
   };
 }
@@ -2262,7 +2301,8 @@ function drawReportCard(ctx, x, y, d, t = 0) {
 function EndingScene() {
   let t = 0, fw = [];
   const d = reportData(), art = Art.player(Save.data.char, 'gown');
-  Leaderboard.submit({ name: d.name, char: d.char, cgpa: Math.round(d.cgpa * 100) / 100, score: d.score, offer: d.offer.title, date: Date.now() });
+  const send = () => Leaderboard.submit({ name: d.name, roll: d.name, token: Save.data.token, char: d.char, cgpa: Math.round(d.cgpa * 100) / 100, score: d.score, offer: d.offer.title, date: Date.now() });
+  if (Save.data.name) send(); else setTimeout(() => Game.askName('', r => { Save.data.name = d.name = r; Save.store(); send(); }), 400);   // roll number needed for the Hall of Fame
   const menu = Menu([
     { label: 'SHARE REPORT CARD', fn: () => Share.open(d) },
     { label: 'HALL OF FAME', fn: () => Game.go(BoardScene()) },
@@ -2290,22 +2330,35 @@ function EndingScene() {
   };
 }
 
+// Touch-control settings, shared by the Options screen and the pause menu (touch devices only)
+const PAD_ALPHAS = [null, 0.25, 0.4, 0.55, 0.7, 0.85, 1];   // null = default (55% landscape, solid portrait)
+function TouchMenu(onBack) {
+  return Menu([
+    { label: () => 'A/B BUTTONS: ' + (Save.data.opts.abSwap ? 'B  A' : 'A  B'), fn: () => Save.toggle('abSwap') },
+    { label: () => { const a = Save.data.opts.padAlpha; return 'OPACITY: ' + (a == null ? 'DEFAULT' : Math.round(a * 100) + '%'); },
+      fn: () => { const i = PAD_ALPHAS.indexOf(Save.data.opts.padAlpha); Save.setOpt('padAlpha', PAD_ALPHAS[(i + 1) % PAD_ALPHAS.length]); } },
+    { label: 'MOVE BUTTONS', fn: () => Game.editTouch() },
+    { label: 'BACK', fn: onBack },
+  ]);
+}
+
 function OptionsScene() {
-  let t = 0, confirmReset = false;
+  let t = 0, confirmReset = false, sub = null;
   const menu = Menu([
     { label: () => 'MUSIC: ' + (Save.data.opts.music ? 'ON' : 'OFF'), fn: () => Save.toggle('music') },
     { label: () => 'SOUND FX: ' + (Save.data.opts.sfx ? 'ON' : 'OFF'), fn: () => Save.toggle('sfx') },
     { label: () => 'CRT SCANLINES: ' + (Save.data.opts.crt ? 'ON' : 'OFF'), fn: () => Save.toggle('crt') },
+    ...(Input.usedTouch ? [{ label: 'TOUCH CONTROLS', fn: () => { sub = TouchMenu(() => { sub = null; }); } }] : []),
     { label: 'KEYBOARD CONTROLS', fn: () => Game.go(ControlsScene()) },
     { label: () => confirmReset ? 'SURE? PRESS AGAIN TO ERASE' : 'RESET PROGRESS', fn: () => { if (confirmReset) { Save.reset(); confirmReset = false; Sound.sfx('lose'); } else confirmReset = true; } },
     { label: 'BACK', fn: () => Game.go(TitleScene()) },
   ]);
   return {
-    update() { t++; if (Input.cancel()) { Sound.sfx('back'); Game.go(TitleScene()); return; } const s = menu.sel; menu.update(); if (menu.sel !== s) confirmReset = false; },
+    update() { t++; if (Game.editingTouch) return; if (sub) { if (Input.cancel()) { Sound.sfx('back'); sub = null; } else sub.update(); return; } if (Input.cancel()) { Sound.sfx('back'); Game.go(TitleScene()); return; } const s = menu.sel; menu.update(); if (menu.sel !== s) confirmReset = false; },
     draw(ctx) {
       drawBackdrop(ctx, 'night', t, 0.55);
-      Font.draw(ctx, 'OPTIONS', W / 2, 16, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
-      menu.draw(ctx, W / 2, 54, 18);
+      Font.draw(ctx, sub ? 'TOUCH CONTROLS' : 'OPTIONS', W / 2, 16, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
+      if (sub) sub.draw(ctx, W / 2, 60, 18); else menu.draw(ctx, W / 2, 46, 15);
       Font.draw(ctx, 'PROGRESS IS SAVED ON THIS DEVICE', W / 2, 160, '#8a8f98', { align: 'center' });
     },
   };
@@ -2314,7 +2367,7 @@ function OptionsScene() {
 function HelpScene() {
   let t = 0;
   const k = Input.bindings, n = c => Input.keyName(c), two = (a, b) => b ? n(a) + '  OR  ' + n(b) : n(a);
-  const rows = [['MOVE', n(k.left[0]) + ' ' + n(k.right[0]) + (k.left[1] && k.right[1] ? '  OR  ' + n(k.left[1]) + ' ' + n(k.right[1]) : ''), 'D-PAD'],
+  const rows = [['MOVE', n(k.left[0]) + ' ' + n(k.right[0]) + (k.left[1] && k.right[1] ? '  OR  ' + n(k.left[1]) + ' ' + n(k.right[1]) : ''), 'STICK'],
     ['JUMP', two(k.jump[0], k.jump[1]), 'A BUTTON'], ['DASH', two(k.dash[0], k.dash[1]), 'B BUTTON'], ['PAUSE', two(k.pause[0], k.pause[1] || 'Escape'), 'START']];
   const legend = [[Art.coin[0], 'CREDIT'], [Art.item.big, '+5'], [Art.item.milk, 'GROW'], [Art.item.chai, '+1 ♥'], [Art.item.maggi, 'INVINCIBLE'], [Art.item.clock, '+15 SEC']];
   return {
@@ -2324,11 +2377,14 @@ function HelpScene() {
       Font.draw(ctx, 'HOW TO PLAY', W / 2, 8, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
       Font.draw(ctx, 'KEYBOARD', 132, 30, '#f2c14e', { align: 'center' }); Font.draw(ctx, 'TOUCH / PAD', 250, 30, '#f2c14e', { align: 'center' });
       rows.forEach((r, i) => { Font.draw(ctx, r[0], 20, 42 + i * 11, '#9fe3f0'); Font.draw(ctx, r[1], 132, 42 + i * 11, C.white, { align: 'center' }); Font.draw(ctx, r[2], 250, 42 + i * 11, C.white, { align: 'center' }); });
-      legend.forEach((l, i) => { const x = 8 + i * 51; ctx.drawImage(l[0], x + 24 - (l[0].width >> 1), 92); Font.draw(ctx, l[1], x + 24, 108, '#e6e0d4', { align: 'center' }); });
+      // slot width follows each label, so long labels (INVINCIBLE) never run into the next one
+      const lw = legend.map(l => Math.max(Font.width(l[1]), l[0].width)), gap = (W - 16 - lw.reduce((a, b) => a + b, 0)) / legend.length;
+      let lx = 8 + gap / 2;
+      legend.forEach((l, i) => { const cx = Math.round(lx + lw[i] / 2); ctx.drawImage(l[0], cx - (l[0].width >> 1), 92); Font.draw(ctx, l[1], cx, 108, '#e6e0d4', { align: 'center' }); lx += lw[i] + gap; });
       Font.draw(ctx, 'JUMP ON ENEMIES TO STOMP THEM. SLEEP CLOUDS', W / 2, 124, C.white, { align: 'center' });
       Font.draw(ctx, "CAN'T BE STOMPED. BEAT THE DEADLINE, THEN THE BOSS.", W / 2, 134, C.white, { align: 'center' });
       Font.draw(ctx, 'CREDITS + SPEED + BOSS SCORE = YOUR GRADE.', W / 2, 144, '#9be88a', { align: 'center' });
-      Font.draw(ctx, 'FAN-MADE. NOT AN OFFICIAL IIT HYDERABAD PRODUCT.', W / 2, 160, '#8a8f98', { align: 'center' });
+      Font.draw(ctx, 'STUDENT-MADE. NOT AN OFFICIAL IIT HYDERABAD PRODUCT.', W / 2, 160, '#8a8f98', { align: 'center' });
       Font.draw(ctx, 'PRESS ANY BUTTON TO GO BACK', W / 2, 170, '#f2c14e', { align: 'center' });
     },
   };
@@ -2343,16 +2399,17 @@ function BoardScene() {
     draw(ctx) {
       drawBackdrop(ctx, 'fest', t, 0.6);
       Font.draw(ctx, 'HALL OF FAME', W / 2, 8, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
-      Font.draw(ctx, '#', 22, 32, '#f2c14e'); Font.draw(ctx, 'NAME', 40, 32, '#f2c14e'); Font.draw(ctx, 'CGPA', 150, 32, '#f2c14e', { align: 'right' }); Font.draw(ctx, 'SCORE', 205, 32, '#f2c14e', { align: 'right' }); Font.draw(ctx, 'PLACEMENT', 215, 32, '#f2c14e');
+      Font.draw(ctx, '#', 22, 32, '#f2c14e'); Font.draw(ctx, 'PLAYER', 40, 32, '#f2c14e'); Font.draw(ctx, 'CGPA', 150, 32, '#f2c14e', { align: 'right' }); Font.draw(ctx, 'SCORE', 205, 32, '#f2c14e', { align: 'right' }); Font.draw(ctx, 'PLACEMENT', 215, 32, '#f2c14e');
       if (!list) Font.draw(ctx, 'LOADING...', W / 2, 80, C.white, { align: 'center' });
       else if (!list.length) { Font.draw(ctx, 'NO GRADUATES YET.', W / 2, 74, C.white, { align: 'center' }); Font.draw(ctx, 'FINISH ALL 8 LEVELS TO GET ON THE BOARD!', W / 2, 88, '#9fe3f0', { align: 'center' }); }
       else list.forEach((e, i) => {
-        const y = 45 + i * 13, mine = e.name === me && e.char === Save.data.char, col = mine ? '#9be88a' : i === 0 ? '#fff3c4' : C.white;
+        const y = 45 + i * 13, mine = (e.roll || e.name) === me, col = mine ? '#9be88a' : i === 0 ? '#fff3c4' : C.white;
         if (mine) { ctx.fillStyle = 'rgba(155,232,138,0.14)'; ctx.fillRect(16, y - 3, 288, 12); }
-        Font.draw(ctx, String(i + 1), 22, y, '#9fe3f0'); Font.draw(ctx, String(e.name).slice(0, 10), 40, y, col);
+        Font.draw(ctx, String(i + 1), 22, y, '#9fe3f0'); Font.draw(ctx, String(e.name).slice(0, 12), 40, y, col);
         Font.draw(ctx, Number(e.cgpa).toFixed(2), 150, y, col, { align: 'right' }); Font.draw(ctx, String(e.score), 205, y, col, { align: 'right' }); Font.draw(ctx, String(e.offer).replace(' OFFER', '').slice(0, 17), 215, y, '#9be88a');
       });
-      if (list && Leaderboard.global && Leaderboard.rank > 8) Font.draw(ctx, 'YOUR RANK: #' + Leaderboard.rank, W / 2, 148, '#9be88a', { align: 'center' });
+      if (Leaderboard.conflict) Font.draw(ctx, 'YOUR ROLL NO. IS CLAIMED ON ANOTHER DEVICE - ASK THE ADMIN', W / 2, 148, '#ff8a8a', { align: 'center' });
+      else if (list && Leaderboard.global && Leaderboard.rank > 8) Font.draw(ctx, 'YOUR RANK: #' + Leaderboard.rank, W / 2, 148, '#9be88a', { align: 'center' });
       Font.draw(ctx, list ? Leaderboard.note : '', W / 2, 158, Leaderboard.global ? '#9fe3f0' : '#8a8f98', { align: 'center' });
       Font.draw(ctx, 'PRESS ANY BUTTON TO GO BACK', W / 2, 169, '#f2c14e', { align: 'center' });
     },
@@ -2361,7 +2418,8 @@ function BoardScene() {
 
 // Keyboard remapping. Rows = actions (2 key slots each) + options. A/Enter on a slot → press the new key.
 // Esc cancels, Delete clears a second slot. Taking a key already in use swaps the two bindings.
-function ControlsScene() {
+function ControlsScene(onBack) {   // onBack: optional; used when opened from the pause menu
+  const leave = () => onBack ? onBack() : Game.go(OptionsScene());
   let t = 0, row = 0, col = 0, waiting = false, msg = '';
   const acts = Input.ACTIONS, extra = ['UP ALSO JUMPS', 'RESET TO DEFAULTS', 'BACK'], N = acts.length + extra.length;
   const keys = () => { const k = {}; for (const a of acts) k[a.id] = Input.bindings[a.id].slice(); return k; };
@@ -2384,7 +2442,7 @@ function ControlsScene() {
     if (row < acts.length) { waiting = true; Sound.sfx('select'); Input.captureNext(code => { waiting = false; if (code) assign(row, col, code); else { msg = 'CANCELLED'; Sound.sfx('back'); } }); }
     else if (row === acts.length) { Save.toggle('upJumps'); Sound.sfx('confirm'); }
     else if (row === acts.length + 1) { Save.data.opts.upJumps = true; Save.setKeys(null); msg = 'DEFAULTS RESTORED'; Sound.sfx('confirm'); }
-    else { Sound.sfx('back'); Game.go(OptionsScene()); }
+    else { Sound.sfx('back'); leave(); }
   }
   return {
     update() {
@@ -2393,7 +2451,7 @@ function ControlsScene() {
       if (Input.pressed.down) { row = (row + 1) % N; Sound.sfx('select'); }
       if (row < acts.length && (Input.pressed.left || Input.pressed.right)) { col ^= 1; Sound.sfx('select'); }
       for (let r = 0; r < N; r++) for (const c of r < acts.length ? [0, 1] : [-1]) { const q = rectOf(r, c); if (Input.tapIn(q[0], q[1], q[2], q[3])) { row = r; col = Math.max(0, c); activate(); return; } }
-      if (Input.pressed.back) { Sound.sfx('back'); Game.go(OptionsScene()); return; }
+      if (Input.pressed.back) { Sound.sfx('back'); leave(); return; }
       if (t > 8 && Input.confirm()) activate();
     },
     draw(ctx) {
@@ -2437,21 +2495,31 @@ function scoreRun(run) {
 }
 
 const Save = (() => {
-  const fresh = () => ({ v: 1, char: 'boy', name: '', unlocked: 0, levels: {}, opts: { music: true, sfx: true, crt: true, upJumps: true }, keys: null });
+  const fresh = () => ({ v: 1, char: 'boy', name: '', unlocked: 0, levels: {}, opts: { music: true, sfx: true, crt: true, upJumps: true, abSwap: false, touchPos: null, padAlpha: null }, keys: null, token: '' });
   let data = fresh();
-  function apply() { Sound.setOpts({ music: data.opts.music, sfx: data.opts.sfx }); document.body.classList.toggle('crt', !!data.opts.crt);
-    Input.setBindings(data.keys, data.opts.upJumps !== false); if (typeof Game !== 'undefined' && Game.updateHint) Game.updateHint(); }
+  function apply() { Sound.setOpts({ music: data.opts.music, sfx: data.opts.sfx }); document.body.classList.toggle('crt', !!data.opts.crt); document.body.classList.toggle('abswap', !!data.opts.abSwap);
+    if (data.opts.padAlpha == null) document.body.style.removeProperty('--pad-a'); else document.body.style.setProperty('--pad-a', data.opts.padAlpha);
+    Input.setBindings(data.keys, data.opts.upJumps !== false); if (typeof Game !== 'undefined' && Game.updateHint) { Game.updateHint(); Game.applyTouchPos(); } }
   function load() {
     try {
       const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
       if (d && d.v === 1) data = Object.assign(fresh(), d, { opts: Object.assign(fresh().opts, d.opts) });
     } catch (e) { /* storage unavailable: play without saving */ }
-    apply();
+    fixId(); store(); apply();
+  }
+  // name holds the player's 7-digit roll number; token is this device's secret for claiming it on the global board
+  function fixId() {
+    if (!/^\d{7}$/.test(String(data.name || ''))) data.name = '';
+    if (!/^[A-Za-z0-9-]{16,64}$/.test(String(data.token || ''))) {
+      let t = ''; try { t = crypto.randomUUID(); } catch (e) {} if (!t) { for (let i = 0; i < 32; i++) t += Math.floor(Math.random() * 16).toString(16); }
+      data.token = t;
+    }
   }
   function store() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {} }
   function toggle(k) { data.opts[k] = !data.opts[k]; apply(); store(); }
+  function setOpt(k, v) { data.opts[k] = v; apply(); store(); }
   function setKeys(keys) { data.keys = keys; apply(); store(); }
-  function reset() { data = Object.assign(fresh(), { opts: data.opts, keys: data.keys, char: data.char, name: data.name }); store(); }
+  function reset() { data = Object.assign(fresh(), { opts: data.opts, keys: data.keys, char: data.char, name: data.name, token: data.token }); store(); }
   function record(run) {
     const r = scoreRun(run), prev = data.levels[run.level];
     r.best = !prev || r.score > prev.score;
@@ -2462,7 +2530,7 @@ const Save = (() => {
   function cgpa() { const v = Object.values(data.levels); return v.length ? v.reduce((s, l) => s + l.pts, 0) / v.length : 0; }
   function totalScore() { return Object.values(data.levels).reduce((s, l) => s + l.score, 0); }
   const hasProgress = () => data.unlocked > 0;
-  return { get data() { return data; }, load, store, toggle, setKeys, reset, record, cgpa, totalScore, hasProgress };
+  return { get data() { return data; }, load, store, toggle, setOpt, setKeys, reset, record, cgpa, totalScore, hasProgress };
 })();
 
 // ── Scoreboard ──────────────────────────────────────────────────────────────
@@ -2474,7 +2542,7 @@ const LocalBoard = {
   read() { try { return JSON.parse(localStorage.getItem(BOARD_KEY) || '[]') || []; } catch (e) { return []; } },
   async top(n) { return this.read().slice(0, n); },
   async submit(entry) {
-    let list = this.read().filter(e => !(e.name === entry.name && e.score <= entry.score));   // keep each name's best
+    let list = this.read().filter(e => /^\d{7}$/.test(e.name) && !(e.name === entry.name && e.score <= entry.score));   // keep each name's best
     if (!list.some(e => e.name === entry.name)) list.push(entry);
     list.sort((a, b) => b.score - a.score);
     try { localStorage.setItem(BOARD_KEY, JSON.stringify(list.slice(0, 20))); } catch (e) {}
@@ -2486,14 +2554,21 @@ const RemoteBoard = {
   async call(opts) {
     const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 7000);
     try { const r = await fetch(BOARD_URL + (opts ? '' : '?limit=20'), Object.assign({ signal: ctl.signal, headers: { 'content-type': 'application/json' } }, opts || {}));
-      if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); }
+      if (!r.ok) { const er = new Error('HTTP ' + r.status); er.status = r.status; throw er; } return await r.json(); }
     finally { clearTimeout(to); }
   },
   async top(n) { return ((await this.call()).entries || []).slice(0, n); },
   async submit(entry) { return this.call({ method: 'POST', body: JSON.stringify(entry) }); },
+  async claim(roll, token) { return this.call({ method: 'POST', body: JSON.stringify({ action: 'claim', roll, token }) }); },
 };
 const Leaderboard = {
-  note: '', global: false, rank: 0,
+  note: '', global: false, rank: 0, conflict: false,
+  // → 'ok' | 'taken' | 'offline' (offline: accepted for now, checked again when the score is sent)
+  async claim(roll) {
+    if (!RemoteBoard.available) return 'ok';
+    try { await RemoteBoard.claim(roll, Save.data.token); this.conflict = false; return 'ok'; }
+    catch (e) { return e.status === 409 ? 'taken' : e.status === 400 ? 'bad' : 'offline'; }
+  },
   async top(n) {
     if (RemoteBoard.available) {
       try {
@@ -2508,12 +2583,13 @@ const Leaderboard = {
     await LocalBoard.submit(entry).catch(() => {});
     if (!RemoteBoard.available) return;
     try { const r = await RemoteBoard.submit(entry); this.rank = r.rank || 0; try { localStorage.removeItem(PENDING_KEY); } catch (e) {} }
-    catch (e) { try { localStorage.setItem(PENDING_KEY, JSON.stringify(entry)); } catch (e2) {} }   // retry next time the board opens
+    catch (e) { if (e.status === 409 || e.status === 400) { this.conflict = e.status === 409; return; } try { localStorage.setItem(PENDING_KEY, JSON.stringify(entry)); } catch (e2) {} }   // retry next time the board opens
   },
   async flush() {
     let p = null; try { p = JSON.parse(localStorage.getItem(PENDING_KEY) || 'null'); } catch (e) {}
     if (!p) return;
-    try { const r = await RemoteBoard.submit(p); this.rank = r.rank || this.rank; localStorage.removeItem(PENDING_KEY); } catch (e) {}
+    try { const r = await RemoteBoard.submit(p); this.rank = r.rank || this.rank; localStorage.removeItem(PENDING_KEY); }
+    catch (e) { if (e.status === 409 || e.status === 400) { this.conflict = e.status === 409; try { localStorage.removeItem(PENDING_KEY); } catch (e2) {} } }
   },
 };
 
@@ -2577,14 +2653,26 @@ const Game = (() => {
   }
 
   // ── DOM dialogs ──
-  function askName(cur, cb) {
-    const box = $('nameBox'), inp = $('nameInput');
-    const done = () => {
-      const v = inp.value.toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 10);
-      box.classList.remove('open'); modal = false; inp.blur(); cb(v);
+  // Roll-number dialog. cb(roll) is called only once the number is valid and (when online) free.
+  function askName(cur, cb, onCancel) {
+    const box = $('nameBox'), inp = $('nameInput'), err = $('nameErr'), ok = $('nameOk');
+    let busy = false;
+    const close = () => { box.classList.remove('open'); modal = false; inp.blur(); };
+    const done = async () => {
+      if (busy) return;
+      const v = inp.value.replace(/\D/g, '');
+      if (!/^\d{7}$/.test(v)) { err.textContent = 'Enter exactly 7 digits.'; return; }
+      busy = true; ok.textContent = '...'; err.textContent = '';
+      const r = v === cur ? 'ok' : await Leaderboard.claim(v);
+      busy = false; ok.textContent = 'OK';
+      if (r === 'taken') { err.textContent = 'Roll number ' + v + ' is already taken. Pick yours, or ask the admin.'; return; }
+      if (r === 'bad') { err.textContent = 'Enter exactly 7 digits.'; return; }
+      close(); cb(v);
     };
-    inp.value = cur || ''; box.classList.add('open'); modal = true;
-    $('nameOk').onclick = done; inp.onkeydown = e => { if (e.key === 'Enter') done(); };
+    inp.value = cur || ''; err.textContent = ''; ok.textContent = 'OK'; box.classList.add('open'); modal = true;
+    inp.oninput = () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 7); err.textContent = ''; };
+    ok.onclick = done; inp.onkeydown = e => { if (e.key === 'Enter') done(); if (e.key === 'Escape') { close(); if (onCancel) onCancel(); } };
+    $('nameCancel').onclick = () => { close(); if (onCancel) onCancel(); };
     try { inp.focus(); } catch (e) {}
   }
   function showShare(cnv, text) {
@@ -2617,6 +2705,39 @@ const Game = (() => {
   }
 
   // Desktop hint line under the screen, built from the current key bindings
+  // ── Touch layout editor: drag the stick / A-B group; offsets saved per orientation ──
+  const orient = () => innerWidth > innerHeight ? 'landscape' : 'portrait';
+  function applyTouchPos() {
+    const tp = (Save.data.opts.touchPos || {})[orient()] || {};
+    for (const [id, k] of [['dpad', 'st'], ['ab', 'ab']]) { const v = tp[k] || [0, 0]; $(id).style.translate = v[0] + 'px ' + v[1] + 'px'; }
+  }
+  let editDone = null;
+  function editTouch(onDone) {
+    editDone = onDone; document.body.classList.add('touchedit');
+    if (!Save.data.opts.touchPos) Save.data.opts.touchPos = {};
+  }
+  function setupEditor() {
+    let drag = null;
+    const start = (el, k, x, y) => { const o = orient(), tp = Save.data.opts.touchPos; tp[o] = tp[o] || {}; const v = tp[o][k] || [0, 0]; drag = { el, k, o, x, y, v0: v.slice(), r: el.getBoundingClientRect() }; };
+    const move = (x, y) => {
+      if (!drag) return; const d = drag, m = 6;
+      const dx = clamp(x - d.x, m - d.r.left, innerWidth - m - d.r.right), dy = clamp(y - d.y, m - d.r.top, innerHeight - m - d.r.bottom);
+      const v = [Math.round(d.v0[0] + dx), Math.round(d.v0[1] + dy)]; Save.data.opts.touchPos[d.o][d.k] = v; d.el.style.translate = v[0] + 'px ' + v[1] + 'px';
+    };
+    for (const [id, k] of [['dpad', 'st'], ['ab', 'ab']]) {
+      const el = $(id);
+      el.addEventListener('touchstart', e => { if (!document.body.classList.contains('touchedit')) return; e.preventDefault(); const t = e.changedTouches[0]; start(el, k, t.clientX, t.clientY); }, { passive: false });
+      el.addEventListener('mousedown', e => { if (document.body.classList.contains('touchedit')) start(el, k, e.clientX, e.clientY); });
+    }
+    document.addEventListener('touchmove', e => { if (drag) { e.preventDefault(); move(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
+    window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+    const end = () => { if (drag) { drag = null; Save.store(); } };
+    document.addEventListener('touchend', end); window.addEventListener('mouseup', end);
+    const done = e => { e.preventDefault(); document.body.classList.remove('touchedit'); Save.store(); Sound.sfx('confirm'); const cb = editDone; editDone = null; if (cb) cb(); };
+    const reset = e => { e.preventDefault(); const tp = Save.data.opts.touchPos || {}; delete tp[orient()]; applyTouchPos(); Save.store(); Sound.sfx('back'); };
+    $('editDone').addEventListener('click', done); $('editReset').addEventListener('click', reset);
+  }
+
   function updateHint() {
     const el = $('hint'); if (!el || !Input.bindings) return;
     const k = Input.bindings, n = Input.keyName, two = a => k[a][1] ? n(k[a][0]) + ' / ' + n(k[a][1]) : n(k[a][0]);
@@ -2635,8 +2756,8 @@ const Game = (() => {
   function init() {
     canvas = $('game'); ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
     if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
-    Save.load(); Input.init(canvas); updateHint(); layout();
-    window.addEventListener('resize', layout); window.addEventListener('orientationchange', () => setTimeout(layout, 200));
+    Save.load(); Input.init(canvas); setupEditor(); updateHint(); layout(); applyTouchPos();
+    window.addEventListener('resize', () => { layout(); applyTouchPos(); }); window.addEventListener('orientationchange', () => setTimeout(layout, 200));
     document.addEventListener('touchstart', () => setTimeout(layout, 0), { once: true });
     document.body.classList.toggle('can-fs', canFs);
     document.addEventListener('touchend', e => { if (e.target.id !== 'fsBtn' && !e.target.closest('.modal')) enterFs(); }, { once: true });
@@ -2651,7 +2772,7 @@ const Game = (() => {
   }
 
   // Debug / test handle (used by tools/test.js). Harmless in production.
-  const api = { go, updateHint, askName, showShare, tick, render, layout, get scene() { return scene; }, set auto(v) { auto = v; }, init };
+  const api = { go, updateHint, applyTouchPos, editTouch, get editingTouch() { return document.body.classList.contains('touchedit'); }, askName, showShare, tick, render, layout, get scene() { return scene; }, set auto(v) { auto = v; }, init };
   window.IITHQuest = { Game: api, Save, Input, Sound, Leaderboard, LEVELS, buildLevel, PlayScene, BossScene, ResultScene, EndingScene, TitleScene, ControlsScene, scoreRun, MINIGAMES, TUNE, moveBody, tileAt, IntroScene, CharScene, LevelSelectScene, OptionsScene, HelpScene, BoardScene, Share, reportData };
   return api;
 })();

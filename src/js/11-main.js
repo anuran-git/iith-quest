@@ -39,14 +39,26 @@ const Game = (() => {
   }
 
   // ── DOM dialogs ──
-  function askName(cur, cb) {
-    const box = $('nameBox'), inp = $('nameInput');
-    const done = () => {
-      const v = inp.value.toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 10);
-      box.classList.remove('open'); modal = false; inp.blur(); cb(v);
+  // Roll-number dialog. cb(roll) is called only once the number is valid and (when online) free.
+  function askName(cur, cb, onCancel) {
+    const box = $('nameBox'), inp = $('nameInput'), err = $('nameErr'), ok = $('nameOk');
+    let busy = false;
+    const close = () => { box.classList.remove('open'); modal = false; inp.blur(); };
+    const done = async () => {
+      if (busy) return;
+      const v = inp.value.replace(/\D/g, '');
+      if (!/^\d{7}$/.test(v)) { err.textContent = 'Enter exactly 7 digits.'; return; }
+      busy = true; ok.textContent = '...'; err.textContent = '';
+      const r = v === cur ? 'ok' : await Leaderboard.claim(v);
+      busy = false; ok.textContent = 'OK';
+      if (r === 'taken') { err.textContent = 'Roll number ' + v + ' is already taken. Pick yours, or ask the admin.'; return; }
+      if (r === 'bad') { err.textContent = 'Enter exactly 7 digits.'; return; }
+      close(); cb(v);
     };
-    inp.value = cur || ''; box.classList.add('open'); modal = true;
-    $('nameOk').onclick = done; inp.onkeydown = e => { if (e.key === 'Enter') done(); };
+    inp.value = cur || ''; err.textContent = ''; ok.textContent = 'OK'; box.classList.add('open'); modal = true;
+    inp.oninput = () => { inp.value = inp.value.replace(/\D/g, '').slice(0, 7); err.textContent = ''; };
+    ok.onclick = done; inp.onkeydown = e => { if (e.key === 'Enter') done(); if (e.key === 'Escape') { close(); if (onCancel) onCancel(); } };
+    $('nameCancel').onclick = () => { close(); if (onCancel) onCancel(); };
     try { inp.focus(); } catch (e) {}
   }
   function showShare(cnv, text) {
@@ -79,6 +91,39 @@ const Game = (() => {
   }
 
   // Desktop hint line under the screen, built from the current key bindings
+  // ── Touch layout editor: drag the stick / A-B group; offsets saved per orientation ──
+  const orient = () => innerWidth > innerHeight ? 'landscape' : 'portrait';
+  function applyTouchPos() {
+    const tp = (Save.data.opts.touchPos || {})[orient()] || {};
+    for (const [id, k] of [['dpad', 'st'], ['ab', 'ab']]) { const v = tp[k] || [0, 0]; $(id).style.translate = v[0] + 'px ' + v[1] + 'px'; }
+  }
+  let editDone = null;
+  function editTouch(onDone) {
+    editDone = onDone; document.body.classList.add('touchedit');
+    if (!Save.data.opts.touchPos) Save.data.opts.touchPos = {};
+  }
+  function setupEditor() {
+    let drag = null;
+    const start = (el, k, x, y) => { const o = orient(), tp = Save.data.opts.touchPos; tp[o] = tp[o] || {}; const v = tp[o][k] || [0, 0]; drag = { el, k, o, x, y, v0: v.slice(), r: el.getBoundingClientRect() }; };
+    const move = (x, y) => {
+      if (!drag) return; const d = drag, m = 6;
+      const dx = clamp(x - d.x, m - d.r.left, innerWidth - m - d.r.right), dy = clamp(y - d.y, m - d.r.top, innerHeight - m - d.r.bottom);
+      const v = [Math.round(d.v0[0] + dx), Math.round(d.v0[1] + dy)]; Save.data.opts.touchPos[d.o][d.k] = v; d.el.style.translate = v[0] + 'px ' + v[1] + 'px';
+    };
+    for (const [id, k] of [['dpad', 'st'], ['ab', 'ab']]) {
+      const el = $(id);
+      el.addEventListener('touchstart', e => { if (!document.body.classList.contains('touchedit')) return; e.preventDefault(); const t = e.changedTouches[0]; start(el, k, t.clientX, t.clientY); }, { passive: false });
+      el.addEventListener('mousedown', e => { if (document.body.classList.contains('touchedit')) start(el, k, e.clientX, e.clientY); });
+    }
+    document.addEventListener('touchmove', e => { if (drag) { e.preventDefault(); move(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
+    window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+    const end = () => { if (drag) { drag = null; Save.store(); } };
+    document.addEventListener('touchend', end); window.addEventListener('mouseup', end);
+    const done = e => { e.preventDefault(); document.body.classList.remove('touchedit'); Save.store(); Sound.sfx('confirm'); const cb = editDone; editDone = null; if (cb) cb(); };
+    const reset = e => { e.preventDefault(); const tp = Save.data.opts.touchPos || {}; delete tp[orient()]; applyTouchPos(); Save.store(); Sound.sfx('back'); };
+    $('editDone').addEventListener('click', done); $('editReset').addEventListener('click', reset);
+  }
+
   function updateHint() {
     const el = $('hint'); if (!el || !Input.bindings) return;
     const k = Input.bindings, n = Input.keyName, two = a => k[a][1] ? n(k[a][0]) + ' / ' + n(k[a][1]) : n(k[a][0]);
@@ -97,8 +142,8 @@ const Game = (() => {
   function init() {
     canvas = $('game'); ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
     if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
-    Save.load(); Input.init(canvas); updateHint(); layout();
-    window.addEventListener('resize', layout); window.addEventListener('orientationchange', () => setTimeout(layout, 200));
+    Save.load(); Input.init(canvas); setupEditor(); updateHint(); layout(); applyTouchPos();
+    window.addEventListener('resize', () => { layout(); applyTouchPos(); }); window.addEventListener('orientationchange', () => setTimeout(layout, 200));
     document.addEventListener('touchstart', () => setTimeout(layout, 0), { once: true });
     document.body.classList.toggle('can-fs', canFs);
     document.addEventListener('touchend', e => { if (e.target.id !== 'fsBtn' && !e.target.closest('.modal')) enterFs(); }, { once: true });
@@ -113,7 +158,7 @@ const Game = (() => {
   }
 
   // Debug / test handle (used by tools/test.js). Harmless in production.
-  const api = { go, updateHint, askName, showShare, tick, render, layout, get scene() { return scene; }, set auto(v) { auto = v; }, init };
+  const api = { go, updateHint, applyTouchPos, editTouch, get editingTouch() { return document.body.classList.contains('touchedit'); }, askName, showShare, tick, render, layout, get scene() { return scene; }, set auto(v) { auto = v; }, init };
   window.IITHQuest = { Game: api, Save, Input, Sound, Leaderboard, LEVELS, buildLevel, PlayScene, BossScene, ResultScene, EndingScene, TitleScene, ControlsScene, scoreRun, MINIGAMES, TUNE, moveBody, tileAt, IntroScene, CharScene, LevelSelectScene, OptionsScene, HelpScene, BoardScene, Share, reportData };
   return api;
 })();

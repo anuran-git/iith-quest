@@ -21,13 +21,7 @@
 <div id="app">
   <div id="screen"><canvas id="game" width="320" height="180"></canvas></div>
   <div id="pad" aria-hidden="true">
-    <div id="dpad">
-      <button class="btn d up" data-key="up" type="button">&#9650;</button>
-      <button class="btn d left" data-key="left" type="button">&#9664;</button>
-      <div class="hub"></div>
-      <button class="btn d right" data-key="right" type="button">&#9654;</button>
-      <button class="btn d down" data-key="down" type="button">&#9660;</button>
-    </div>
+    <div id="dpad"><div id="stickBase"></div><div id="stickKnob"></div></div>
     <div id="ab">
       <button class="btn rb b" data-key="b" type="button">B</button>
       <button class="btn rb a" data-key="a" type="button">A</button>
@@ -35,10 +29,13 @@
     <button class="btn" id="startBtn" data-key="start" type="button">START</button>
     <button class="btn" id="fsBtn" type="button" aria-label="Full screen">&#x26F6;</button>
   </div>
+  <div id="editBar"><p>DRAG THE STICK OR A/B TO MOVE THEM</p><button class="ui ghost" id="editReset" type="button">Reset</button><button class="ui" id="editDone" type="button">Done</button></div>
   <div id="hint">Arrows / WASD move &middot; Space or Z jump &middot; X or Shift dash &middot; P pause</div>
 </div>
-<div class="modal" id="nameBox"><div class="card"><label for="nameInput">Your name (for the report card)</label>
-  <input id="nameInput" maxlength="10" autocomplete="off" spellcheck="false"><button class="ui" id="nameOk" type="button">OK</button></div></div>
+<div class="modal" id="nameBox"><div class="card"><label for="nameInput">Your 7-digit roll number</label>
+  <input id="nameInput" maxlength="7" inputmode="numeric" pattern="[0-9]*" autocomplete="off" spellcheck="false" placeholder="e.g. 2401234">
+  <p id="nameErr" class="err"></p>
+  <div class="row"><button class="ui" id="nameOk" type="button">OK</button><button class="ui ghost" id="nameCancel" type="button">Cancel</button></div></div></div>
 <div class="modal" id="shareBox"><div class="card wide"><img id="shareImg" alt="Your IITH Quest report card"><p id="shareMsg"></p>
   <div class="row"><button class="ui" id="shareBtn" type="button">Share</button><button class="ui" id="saveBtn" type="button">Save image</button>
   <button class="ui ghost" id="copyBtn" type="button">Copy caption</button><button class="ui ghost" id="shareClose" type="button">Close</button></div></div></div>

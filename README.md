@@ -5,7 +5,7 @@ run through eight levels (orientation, classes, assignments, Elan & nVision,
 the jury, end-sems, placements, convocation), beat each boss mini-game, and
 graduate with a CGPA, a placement offer and a report card you can share.
 
-Fan-made. Not an official IIT Hyderabad product.
+Student-made. Not an official IIT Hyderabad product.
 
 ## Play
 
@@ -58,3 +58,8 @@ Source is in `src/`; `node build.js` rebuilds `dist/index.html`. No dependencies
 See **CLAUDE.md** for the architecture, how to add levels, enemies and
 mini-games, and the plan for a global scoreboard. `node tools/test.js` bot-plays
 every level and takes screenshots (needs Playwright + Chrome).
+
+## Hall of Fame admin
+Players enter a 7-digit roll number (one device per number). To rename players, delete bad scores or free a roll number:
+1. Netlify → Site configuration → Environment variables → add `ADMIN_KEY` (any secret, 8+ characters) → redeploy.
+2. Open `https://<your-site>/admin.html` and enter that key.

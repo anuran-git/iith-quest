@@ -21,7 +21,7 @@ with a boss mini-game, grades/CGPA, placement result, ending, share card, local 
   (`TUNE` in 00-config.js).
 - Every screen must work with keyboard, touch pad (d-pad, A, B, START), gamepad, and direct taps (`Input.tapIn`).
 - Text uses the 5x7 bitmap font (uppercase). Keep the palette and the red/white IITH building look.
-- Fan-made: no official IITH logo, no real company or brand names.
+- Student-made (not official): no official IITH logo, no real company or brand names.
 - Each file starts with a header comment explaining its API and how to extend it. Read that first.
 
 ## Files (src/js)
@@ -42,6 +42,13 @@ with a boss mini-game, grades/CGPA, placement result, ending, share card, local 
 `src/index.html` is the page shell (canvas, touch pad, dialogs); `src/styles.css` the console/phone layout.
 
 ## Global Hall of Fame
+- Players are identified by a 7-digit ROLL NUMBER (stored in Save.data.name; Save.data.token is the device secret).
+  The first device to use a roll claims it (server keeps sha256(token) in blob `claims`); others get "already taken".
+  Roll dialog = Game.askName (11-main.js), check = Leaderboard.claim (10-save.js). START and the ending ask for it if missing.
+- Admin page: dist/admin.html (src/public/admin.html). Needs env var ADMIN_KEY (8+ chars) in Netlify.
+  Ops: list / rename (display name in blob `aliases`, shown instead of the roll) / delete score / release roll.
+- Touch settings sub-menu TouchMenu() (09-scenes.js) in Options and Pause: A/B order, OPACITY (opts.padAlpha → CSS --pad-a), MOVE BUTTONS.
+
 - Server: `netlify/functions/scores.mjs` (Netlify Function v2 at `/api/scores`, storage = Netlify Blobs store
   `hall-of-fame`, key `board`, top 100, best score per name, validation, 20 s per-IP cooldown). Logic lives in the
   exported `handle(req, store, ip)` so it can be tested without Netlify.
@@ -52,6 +59,10 @@ with a boss mini-game, grades/CGPA, placement result, ending, share card, local 
   server-side replay checks, or signed runs.
 
 ## Keyboard remapping
+- Touch layout editor: Pause/Options → TOUCH LAYOUT (touch devices only). Drag #dpad / #ab; offsets in opts.touchPos[portrait|landscape].{st,ab} applied via CSS `translate` (Game.applyTouchPos, setupEditor in 11-main.js). Stick is 190px.
+- Touch D-pad was replaced by an analog thumb-stick (#dpad container, #stickKnob; logic in 05-input.js with hysteresis).
+- Touch A/B side: opts.abSwap, body.abswap CSS class; toggle in Options and Pause menu (default A left, B right).
+- Also reachable in-level: Pause → CONTROLS (ControlsScene(onBack) overlay inside PlayScene).
 `05-input.js`: `ACTIONS`, `DEFAULT_KEYS`, `setBindings(keys, upAlsoJumps)`, `keyName(code)`, `captureNext(cb)`.
 Bindings live in `Save.data.keys` (2 slots per action); Enter and Escape are fixed. Screen: `ControlsScene`
 (Options → Keyboard controls). Help screen and the desktop hint line read the current bindings.

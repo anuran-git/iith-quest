@@ -75,18 +75,42 @@ const Input = (() => {
     }
     function mark(k, on) { const el = document.querySelector('[data-key="' + k + '"]'); if (el) el.classList.toggle('on', on); }
     const pad = document.getElementById('pad');
+    // Analog thumb-stick (replaces the D-pad): one finger owns the stick until it lifts, so sliding
+    // left <-> right never mis-fires. Hysteresis stops flicker around the thresholds.
+    const stickEl = document.getElementById('dpad'), knob = document.getElementById('stickKnob');
+    let stickId = null, sx = 0, sy = 0;
+    const editing = () => document.body.classList.contains('touchedit');
+    const sdir = { left: false, right: false, up: false, down: false };
+    function stickSet(k, on) { if (sdir[k] !== on) { sdir[k] = on; setAll(TOUCHMAP[k], on); } }
+    function stickMove(cx, cy) {
+      const r = stickEl.getBoundingClientRect(), R = r.width / 2, mx = r.left + R, my = r.top + R;
+      let dx = cx - mx, dy = cy - my; const d = Math.hypot(dx, dy), lim = R * 0.62;
+      if (d > lim) { dx *= lim / d; dy *= lim / d; }
+      const sc = r.width / 190; knob.style.transform = 'translate(' + (dx / sc).toFixed(1) + 'px,' + (dy / sc).toFixed(1) + 'px)';
+      const nx = dx / lim, ny = dy / lim;
+      stickSet('left', nx < (sdir.left ? -0.22 : -0.4)); stickSet('right', nx > (sdir.right ? 0.22 : 0.4));
+      stickSet('up', ny < (sdir.up ? -0.35 : -0.55)); stickSet('down', ny > (sdir.down ? 0.35 : 0.55));
+    }
+    function stickEnd() { stickId = null; knob.style.transform = ''; for (const k in sdir) stickSet(k, false); }
+    const inStick = (x, y) => { const r = stickEl.getBoundingClientRect(); return x > r.left - 24 && x < r.right + 24 && y > r.top - 24 && y < r.bottom + 24; };
+    document.addEventListener('touchstart', e => { if (editing()) return; if (stickId === null) for (const t of e.changedTouches) if (inStick(t.clientX, t.clientY)) { stickId = t.identifier; stickMove(t.clientX, t.clientY); break; } }, { passive: false });
+    document.addEventListener('touchmove', e => { if (stickId !== null) for (const t of e.touches) if (t.identifier === stickId) stickMove(t.clientX, t.clientY); }, { passive: false });
+    ['touchend', 'touchcancel'].forEach(ev => document.addEventListener(ev, e => { if (stickId !== null) for (const t of e.changedTouches) if (t.identifier === stickId) stickEnd(); }));
+    stickEl.addEventListener('mousedown', e => { if (editing()) return; stickId = 'mouse'; stickMove(e.clientX, e.clientY); const mv = ev => stickMove(ev.clientX, ev.clientY), up = () => { stickEnd(); window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); }; window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up); });
     ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(ev => document.addEventListener(ev, e => {
       if (e.target && e.target.tagName === 'INPUT') return;
+      if (document.body.classList.contains('touchedit')) return;   // layout editor handles its own drags
       api.usedTouch = true; document.body.classList.add('touch'); Sound.unlock();
       scan(e);
       if (e.target && (pad.contains(e.target) || e.target === canvas)) e.preventDefault();
     }, { passive: false }));
     // Mouse on the pad buttons (desktop testing)
-    pad.addEventListener('mousedown', e => { const b = e.target.closest('[data-key]'); if (b) { Sound.unlock(); setAll(TOUCHMAP[b.dataset.key], true); const up = () => { setAll(TOUCHMAP[b.dataset.key], false); window.removeEventListener('mouseup', up); }; window.addEventListener('mouseup', up); } });
+    pad.addEventListener('mousedown', e => { if (document.body.classList.contains('touchedit')) return; const b = e.target.closest('[data-key]'); if (b) { Sound.unlock(); setAll(TOUCHMAP[b.dataset.key], true); const up = () => { setAll(TOUCHMAP[b.dataset.key], false); window.removeEventListener('mouseup', up); }; window.addEventListener('mouseup', up); } });
 
     window.addEventListener('pointerup', () => Sound.unlock());
     // Canvas taps / clicks → game coordinates
     canvas.addEventListener('pointerdown', e => {
+      if (document.body.classList.contains('touchedit')) return;
       Sound.unlock();
       const r = canvas.getBoundingClientRect();
       api.tap = { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };

@@ -71,7 +71,7 @@ function PlayScene(index) {
   let coins, items, enemies, movers, springs, checks, goal;
   let shots = [], parts = [], texts = [];
   let cam = 0, frame = 0, timeLeft = totalTime, credits = 0, retries = 0, shake = 0;
-  let state = 'ready', stateT = 0, paused = false, pauseMenu = null;
+  let state = 'ready', stateT = 0, paused = false, pauseMenu = null, ctrl = null, sub = null;
   let checkpoint = { x: L.spawn.x, y: L.spawn.y }, god = false;   // god: test-only invincibility
 
   function spawnEnemies() {
@@ -265,6 +265,9 @@ function PlayScene(index) {
 
   function update() {
     if (paused) {
+      if (Game.editingTouch) return;   // touch layout editor open
+      if (ctrl) { ctrl.update(); return; }   // controls screen open from pause menu
+      if (sub) { if (Input.pressed.back) { Sound.sfx('back'); sub = null; } else sub.update(); return; }   // touch controls sub-menu
       if (Input.pressed.pause) { paused = false; Sound.sfx('back'); return; }
       pauseMenu.update(); return;
     }
@@ -292,12 +295,14 @@ function PlayScene(index) {
   }
 
   function openPause() {
-    paused = true; Sound.sfx('select');
+    paused = true; sub = null; Sound.sfx('select');
     pauseMenu = Menu([
       { label: 'RESUME', fn: () => { paused = false; } },
       { label: 'RESTART LEVEL', fn: () => Game.go(PlayScene(index)) },
       { label: () => 'MUSIC: ' + (Save.data.opts.music ? 'ON' : 'OFF'), fn: () => Save.toggle('music') },
       { label: () => 'SOUND FX: ' + (Save.data.opts.sfx ? 'ON' : 'OFF'), fn: () => Save.toggle('sfx') },
+      ...(Input.usedTouch ? [{ label: 'TOUCH CONTROLS', fn: () => { sub = TouchMenu(() => { sub = null; }); } }] : []),
+      { label: 'KEYBOARD CONTROLS', fn: () => { ctrl = ControlsScene(() => { ctrl = null; }); } },
       { label: 'QUIT TO MENU', fn: () => Game.go(TitleScene()) },
     ]);
   }
@@ -418,10 +423,12 @@ function PlayScene(index) {
       Font.draw(ctx, go ? 'GO!' : 'READY?', W / 2, 70, go ? '#9be88a' : '#fff3c4', { align: 'center', scale: 3, shadow: C.ink });
     }
     if (state === 'clear') Font.draw(ctx, 'STAGE CLEAR!', W / 2, 66, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
+    if (paused && ctrl) { ctrl.draw(ctx); return; }
     if (paused) {
       ctx.fillStyle = 'rgba(11,10,18,0.78)'; ctx.fillRect(0, 0, W, H);
-      Font.draw(ctx, 'PAUSED', W / 2, 30, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
-      pauseMenu.draw(ctx, W / 2, 64);
+      Font.draw(ctx, 'PAUSED', W / 2, 24, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
+      if (sub) { Font.draw(ctx, 'TOUCH CONTROLS', W / 2, 52, '#9fe3f0', { align: 'center' }); sub.draw(ctx, W / 2, 72, 18); }
+      else pauseMenu.draw(ctx, W / 2, 52, 15);
     }
   }
 

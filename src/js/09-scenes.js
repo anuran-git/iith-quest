@@ -69,8 +69,8 @@ function CharScene() {
   let t = 0, focus = 1;   // 0 = name row, 1 = start
   const kinds = ['boy', 'girl'], art = { boy: Art.player('boy'), girl: Art.player('girl') };
   const cardX = i => 70 + i * 104;
-  function begin() { Save.store(); Sound.sfx('confirm'); Game.go(IntroScene(0)); }
-  function editName() { Game.askName(Save.data.name, n => { Save.data.name = n; Save.store(); }); }
+  function editName(then) { Game.askName(Save.data.name, n => { Save.data.name = n; Save.store(); if (then) then(); }); }
+  function begin() { if (!Save.data.name) { focus = 0; editName(begin); return; } Save.store(); Sound.sfx('confirm'); Game.go(IntroScene(0)); }
   return {
     update() {
       t++;
@@ -92,11 +92,11 @@ function CharScene() {
         Font.draw(ctx, k === 'boy' ? 'BOY' : 'GIRL', x + 38, 110, on ? '#f2c14e' : '#8a8f98', { align: 'center' });
       });
       Font.draw(ctx, '←', 56, 72, '#f2c14e', { align: 'center' }); Font.draw(ctx, '→', 264, 72, '#f2c14e', { align: 'center' });
-      const nm = 'NAME: ' + (Save.data.name || '(TAP TO SET)');
+      const nm = 'ROLL NO: ' + (Save.data.name || '(TAP TO SET)');
       Font.draw(ctx, nm, W / 2, 131, focus === 0 ? '#f2c14e' : C.white, { align: 'center', shadow: C.ink });
       panel(ctx, 100, 144, 120, 16, focus === 1 ? '#b3262e' : '#3d2434', focus === 1 ? '#f2c14e' : '#8a8f98');
       Font.draw(ctx, 'START SEMESTER', W / 2, 149, C.white, { align: 'center' });
-      Font.draw(ctx, '← → CHOOSE   ↑ ↓ NAME   A START   B BACK', W / 2, 167, '#8a8f98', { align: 'center' });
+      Font.draw(ctx, '← → CHOOSE   ↑ ↓ ROLL NO   A START   B BACK', W / 2, 167, '#8a8f98', { align: 'center' });
     },
   };
 }
@@ -221,7 +221,8 @@ function drawReportCard(ctx, x, y, d, t = 0) {
 function EndingScene() {
   let t = 0, fw = [];
   const d = reportData(), art = Art.player(Save.data.char, 'gown');
-  Leaderboard.submit({ name: d.name, char: d.char, cgpa: Math.round(d.cgpa * 100) / 100, score: d.score, offer: d.offer.title, date: Date.now() });
+  const send = () => Leaderboard.submit({ name: d.name, roll: d.name, token: Save.data.token, char: d.char, cgpa: Math.round(d.cgpa * 100) / 100, score: d.score, offer: d.offer.title, date: Date.now() });
+  if (Save.data.name) send(); else setTimeout(() => Game.askName('', r => { Save.data.name = d.name = r; Save.store(); send(); }), 400);   // roll number needed for the Hall of Fame
   const menu = Menu([
     { label: 'SHARE REPORT CARD', fn: () => Share.open(d) },
     { label: 'HALL OF FAME', fn: () => Game.go(BoardScene()) },
@@ -249,22 +250,35 @@ function EndingScene() {
   };
 }
 
+// Touch-control settings, shared by the Options screen and the pause menu (touch devices only)
+const PAD_ALPHAS = [null, 0.25, 0.4, 0.55, 0.7, 0.85, 1];   // null = default (55% landscape, solid portrait)
+function TouchMenu(onBack) {
+  return Menu([
+    { label: () => 'A/B BUTTONS: ' + (Save.data.opts.abSwap ? 'B  A' : 'A  B'), fn: () => Save.toggle('abSwap') },
+    { label: () => { const a = Save.data.opts.padAlpha; return 'OPACITY: ' + (a == null ? 'DEFAULT' : Math.round(a * 100) + '%'); },
+      fn: () => { const i = PAD_ALPHAS.indexOf(Save.data.opts.padAlpha); Save.setOpt('padAlpha', PAD_ALPHAS[(i + 1) % PAD_ALPHAS.length]); } },
+    { label: 'MOVE BUTTONS', fn: () => Game.editTouch() },
+    { label: 'BACK', fn: onBack },
+  ]);
+}
+
 function OptionsScene() {
-  let t = 0, confirmReset = false;
+  let t = 0, confirmReset = false, sub = null;
   const menu = Menu([
     { label: () => 'MUSIC: ' + (Save.data.opts.music ? 'ON' : 'OFF'), fn: () => Save.toggle('music') },
     { label: () => 'SOUND FX: ' + (Save.data.opts.sfx ? 'ON' : 'OFF'), fn: () => Save.toggle('sfx') },
     { label: () => 'CRT SCANLINES: ' + (Save.data.opts.crt ? 'ON' : 'OFF'), fn: () => Save.toggle('crt') },
+    ...(Input.usedTouch ? [{ label: 'TOUCH CONTROLS', fn: () => { sub = TouchMenu(() => { sub = null; }); } }] : []),
     { label: 'KEYBOARD CONTROLS', fn: () => Game.go(ControlsScene()) },
     { label: () => confirmReset ? 'SURE? PRESS AGAIN TO ERASE' : 'RESET PROGRESS', fn: () => { if (confirmReset) { Save.reset(); confirmReset = false; Sound.sfx('lose'); } else confirmReset = true; } },
     { label: 'BACK', fn: () => Game.go(TitleScene()) },
   ]);
   return {
-    update() { t++; if (Input.cancel()) { Sound.sfx('back'); Game.go(TitleScene()); return; } const s = menu.sel; menu.update(); if (menu.sel !== s) confirmReset = false; },
+    update() { t++; if (Game.editingTouch) return; if (sub) { if (Input.cancel()) { Sound.sfx('back'); sub = null; } else sub.update(); return; } if (Input.cancel()) { Sound.sfx('back'); Game.go(TitleScene()); return; } const s = menu.sel; menu.update(); if (menu.sel !== s) confirmReset = false; },
     draw(ctx) {
       drawBackdrop(ctx, 'night', t, 0.55);
-      Font.draw(ctx, 'OPTIONS', W / 2, 16, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
-      menu.draw(ctx, W / 2, 54, 18);
+      Font.draw(ctx, sub ? 'TOUCH CONTROLS' : 'OPTIONS', W / 2, 16, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
+      if (sub) sub.draw(ctx, W / 2, 60, 18); else menu.draw(ctx, W / 2, 46, 15);
       Font.draw(ctx, 'PROGRESS IS SAVED ON THIS DEVICE', W / 2, 160, '#8a8f98', { align: 'center' });
     },
   };
@@ -273,7 +287,7 @@ function OptionsScene() {
 function HelpScene() {
   let t = 0;
   const k = Input.bindings, n = c => Input.keyName(c), two = (a, b) => b ? n(a) + '  OR  ' + n(b) : n(a);
-  const rows = [['MOVE', n(k.left[0]) + ' ' + n(k.right[0]) + (k.left[1] && k.right[1] ? '  OR  ' + n(k.left[1]) + ' ' + n(k.right[1]) : ''), 'D-PAD'],
+  const rows = [['MOVE', n(k.left[0]) + ' ' + n(k.right[0]) + (k.left[1] && k.right[1] ? '  OR  ' + n(k.left[1]) + ' ' + n(k.right[1]) : ''), 'STICK'],
     ['JUMP', two(k.jump[0], k.jump[1]), 'A BUTTON'], ['DASH', two(k.dash[0], k.dash[1]), 'B BUTTON'], ['PAUSE', two(k.pause[0], k.pause[1] || 'Escape'), 'START']];
   const legend = [[Art.coin[0], 'CREDIT'], [Art.item.big, '+5'], [Art.item.milk, 'GROW'], [Art.item.chai, '+1 ♥'], [Art.item.maggi, 'INVINCIBLE'], [Art.item.clock, '+15 SEC']];
   return {
@@ -283,11 +297,14 @@ function HelpScene() {
       Font.draw(ctx, 'HOW TO PLAY', W / 2, 8, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
       Font.draw(ctx, 'KEYBOARD', 132, 30, '#f2c14e', { align: 'center' }); Font.draw(ctx, 'TOUCH / PAD', 250, 30, '#f2c14e', { align: 'center' });
       rows.forEach((r, i) => { Font.draw(ctx, r[0], 20, 42 + i * 11, '#9fe3f0'); Font.draw(ctx, r[1], 132, 42 + i * 11, C.white, { align: 'center' }); Font.draw(ctx, r[2], 250, 42 + i * 11, C.white, { align: 'center' }); });
-      legend.forEach((l, i) => { const x = 8 + i * 51; ctx.drawImage(l[0], x + 24 - (l[0].width >> 1), 92); Font.draw(ctx, l[1], x + 24, 108, '#e6e0d4', { align: 'center' }); });
+      // slot width follows each label, so long labels (INVINCIBLE) never run into the next one
+      const lw = legend.map(l => Math.max(Font.width(l[1]), l[0].width)), gap = (W - 16 - lw.reduce((a, b) => a + b, 0)) / legend.length;
+      let lx = 8 + gap / 2;
+      legend.forEach((l, i) => { const cx = Math.round(lx + lw[i] / 2); ctx.drawImage(l[0], cx - (l[0].width >> 1), 92); Font.draw(ctx, l[1], cx, 108, '#e6e0d4', { align: 'center' }); lx += lw[i] + gap; });
       Font.draw(ctx, 'JUMP ON ENEMIES TO STOMP THEM. SLEEP CLOUDS', W / 2, 124, C.white, { align: 'center' });
       Font.draw(ctx, "CAN'T BE STOMPED. BEAT THE DEADLINE, THEN THE BOSS.", W / 2, 134, C.white, { align: 'center' });
       Font.draw(ctx, 'CREDITS + SPEED + BOSS SCORE = YOUR GRADE.', W / 2, 144, '#9be88a', { align: 'center' });
-      Font.draw(ctx, 'FAN-MADE. NOT AN OFFICIAL IIT HYDERABAD PRODUCT.', W / 2, 160, '#8a8f98', { align: 'center' });
+      Font.draw(ctx, 'STUDENT-MADE. NOT AN OFFICIAL IIT HYDERABAD PRODUCT.', W / 2, 160, '#8a8f98', { align: 'center' });
       Font.draw(ctx, 'PRESS ANY BUTTON TO GO BACK', W / 2, 170, '#f2c14e', { align: 'center' });
     },
   };
@@ -302,16 +319,17 @@ function BoardScene() {
     draw(ctx) {
       drawBackdrop(ctx, 'fest', t, 0.6);
       Font.draw(ctx, 'HALL OF FAME', W / 2, 8, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
-      Font.draw(ctx, '#', 22, 32, '#f2c14e'); Font.draw(ctx, 'NAME', 40, 32, '#f2c14e'); Font.draw(ctx, 'CGPA', 150, 32, '#f2c14e', { align: 'right' }); Font.draw(ctx, 'SCORE', 205, 32, '#f2c14e', { align: 'right' }); Font.draw(ctx, 'PLACEMENT', 215, 32, '#f2c14e');
+      Font.draw(ctx, '#', 22, 32, '#f2c14e'); Font.draw(ctx, 'PLAYER', 40, 32, '#f2c14e'); Font.draw(ctx, 'CGPA', 150, 32, '#f2c14e', { align: 'right' }); Font.draw(ctx, 'SCORE', 205, 32, '#f2c14e', { align: 'right' }); Font.draw(ctx, 'PLACEMENT', 215, 32, '#f2c14e');
       if (!list) Font.draw(ctx, 'LOADING...', W / 2, 80, C.white, { align: 'center' });
       else if (!list.length) { Font.draw(ctx, 'NO GRADUATES YET.', W / 2, 74, C.white, { align: 'center' }); Font.draw(ctx, 'FINISH ALL 8 LEVELS TO GET ON THE BOARD!', W / 2, 88, '#9fe3f0', { align: 'center' }); }
       else list.forEach((e, i) => {
-        const y = 45 + i * 13, mine = e.name === me && e.char === Save.data.char, col = mine ? '#9be88a' : i === 0 ? '#fff3c4' : C.white;
+        const y = 45 + i * 13, mine = (e.roll || e.name) === me, col = mine ? '#9be88a' : i === 0 ? '#fff3c4' : C.white;
         if (mine) { ctx.fillStyle = 'rgba(155,232,138,0.14)'; ctx.fillRect(16, y - 3, 288, 12); }
-        Font.draw(ctx, String(i + 1), 22, y, '#9fe3f0'); Font.draw(ctx, String(e.name).slice(0, 10), 40, y, col);
+        Font.draw(ctx, String(i + 1), 22, y, '#9fe3f0'); Font.draw(ctx, String(e.name).slice(0, 12), 40, y, col);
         Font.draw(ctx, Number(e.cgpa).toFixed(2), 150, y, col, { align: 'right' }); Font.draw(ctx, String(e.score), 205, y, col, { align: 'right' }); Font.draw(ctx, String(e.offer).replace(' OFFER', '').slice(0, 17), 215, y, '#9be88a');
       });
-      if (list && Leaderboard.global && Leaderboard.rank > 8) Font.draw(ctx, 'YOUR RANK: #' + Leaderboard.rank, W / 2, 148, '#9be88a', { align: 'center' });
+      if (Leaderboard.conflict) Font.draw(ctx, 'YOUR ROLL NO. IS CLAIMED ON ANOTHER DEVICE - ASK THE ADMIN', W / 2, 148, '#ff8a8a', { align: 'center' });
+      else if (list && Leaderboard.global && Leaderboard.rank > 8) Font.draw(ctx, 'YOUR RANK: #' + Leaderboard.rank, W / 2, 148, '#9be88a', { align: 'center' });
       Font.draw(ctx, list ? Leaderboard.note : '', W / 2, 158, Leaderboard.global ? '#9fe3f0' : '#8a8f98', { align: 'center' });
       Font.draw(ctx, 'PRESS ANY BUTTON TO GO BACK', W / 2, 169, '#f2c14e', { align: 'center' });
     },
@@ -320,7 +338,8 @@ function BoardScene() {
 
 // Keyboard remapping. Rows = actions (2 key slots each) + options. A/Enter on a slot → press the new key.
 // Esc cancels, Delete clears a second slot. Taking a key already in use swaps the two bindings.
-function ControlsScene() {
+function ControlsScene(onBack) {   // onBack: optional; used when opened from the pause menu
+  const leave = () => onBack ? onBack() : Game.go(OptionsScene());
   let t = 0, row = 0, col = 0, waiting = false, msg = '';
   const acts = Input.ACTIONS, extra = ['UP ALSO JUMPS', 'RESET TO DEFAULTS', 'BACK'], N = acts.length + extra.length;
   const keys = () => { const k = {}; for (const a of acts) k[a.id] = Input.bindings[a.id].slice(); return k; };
@@ -343,7 +362,7 @@ function ControlsScene() {
     if (row < acts.length) { waiting = true; Sound.sfx('select'); Input.captureNext(code => { waiting = false; if (code) assign(row, col, code); else { msg = 'CANCELLED'; Sound.sfx('back'); } }); }
     else if (row === acts.length) { Save.toggle('upJumps'); Sound.sfx('confirm'); }
     else if (row === acts.length + 1) { Save.data.opts.upJumps = true; Save.setKeys(null); msg = 'DEFAULTS RESTORED'; Sound.sfx('confirm'); }
-    else { Sound.sfx('back'); Game.go(OptionsScene()); }
+    else { Sound.sfx('back'); leave(); }
   }
   return {
     update() {
@@ -352,7 +371,7 @@ function ControlsScene() {
       if (Input.pressed.down) { row = (row + 1) % N; Sound.sfx('select'); }
       if (row < acts.length && (Input.pressed.left || Input.pressed.right)) { col ^= 1; Sound.sfx('select'); }
       for (let r = 0; r < N; r++) for (const c of r < acts.length ? [0, 1] : [-1]) { const q = rectOf(r, c); if (Input.tapIn(q[0], q[1], q[2], q[3])) { row = r; col = Math.max(0, c); activate(); return; } }
-      if (Input.pressed.back) { Sound.sfx('back'); Game.go(OptionsScene()); return; }
+      if (Input.pressed.back) { Sound.sfx('back'); leave(); return; }
       if (t > 8 && Input.confirm()) activate();
     },
     draw(ctx) {
