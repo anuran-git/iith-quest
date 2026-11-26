@@ -6,6 +6,7 @@ the jury, end-sems, placements, convocation), beat each boss mini-game, and
 graduate with a CGPA, a placement offer and a report card you can share.
 
 Student-made. Not an official IIT Hyderabad product.
+The maker doesn't hate any dogs or promote any animal cruelty. No dog is ever hurt in the game: grumpy dogs are only calmed, friendly ones can be petted.
 
 ## Play
 

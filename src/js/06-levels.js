@@ -12,7 +12,7 @@
 //   s.coins(x,h,n)  s.arc(x,h,n)        credits in a row / in a jump arc
 //   s.plat(x,h,w)   one-way platform    s.wall(x,w,hh)  solid stack on ground
 //   s.block(x,h,w)  floating solid      s.spikes(x,w)   hazard on ground
-//   s.en(kind,x,h)  enemy: bug clock plane phone book zzz email speaker printer
+//   s.en(kind,x,h)  enemy: dog (grumpy, bites) pup (friendly, pet with ↓) bug clock plane phone book zzz email speaker printer
 //   s.item(kind,x,h) milk (GROW trial: grow; a hit shrinks you instead of costing a heart) | chai (heart) | maggi (invincible) | clock (+15s) | big (+5 credits)
 //   s.spring(x)     s.mover(x,h,w,'x'|'y',rangeTiles,speed,skin)   s.check(x)
 //   s.deco(type,x,{..})  s.sign(x,'TEXT')  s.hint(x,'TEXT',h)
@@ -72,16 +72,16 @@ const LEVELS = [
     build(b) {
       b.seg(18, s => s.deco('gate', 2).hint(8, 'ARROWS OR STICK TO MOVE').deco('lamp', 10).coins(11, 1, 4).deco('tree', 15))
        .seg(12, s => s.hint(1, 'SPACE OR A TO JUMP').item('milk', 3, 2).wall(6, 2, 1).coins(6, 3, 2).deco('bench', 9))
-       .seg(14, s => s.deco('cycle', 1).hint(2, 'STOMP THE BUGS!').coins(4, 1, 3).en('bug', 9).deco('tree', 12))
+       .seg(14, s => s.deco('cycle', 1).hint(4, 'RUN INTO A CYCLE TO RIDE IT!').coins(4, 1, 3).en('pup', 10).deco('tree', 12))
        .pit(2, s => s.arc(-1, 3, 4))
-       .seg(14, s => s.deco('lamp', 1).plat(3, 2, 3).coins(3, 3, 3).en('bug', 9).sign(11, 'HOSTELS >'))
+       .seg(14, s => s.deco('lamp', 1).hint(3, 'GRUMPY DOG! HOP ON IT TO CALM IT').plat(3, 2, 3).coins(3, 3, 3).en('dog', 9).sign(11, 'HOSTELS >'))
        .up().seg(8, s => s.coins(2, 1, 4).deco('bush', 5))
        .up().seg(8, s => s.check(1).item('chai', 5, 2).deco('tree', 6))
        .down(2).seg(13, s => s.hint(1, 'X OR B TO DASH').spikes(7, 2).arc(6, 3, 4).deco('lamp', 11))
        .pit(3, s => s.arc(0, 3, 4))
-       .seg(16, s => s.wall(4, 1, 2).plat(7, 3, 3).coins(7, 4, 3).en('bug', 12).deco('tree', 14).deco('vend', 1))
+       .seg(16, s => s.wall(4, 1, 2).plat(7, 3, 3).coins(7, 4, 3).en('dog', 12).deco('tree', 14).deco('vend', 1))
        .pit(2).seg(6, s => s.coins(1, 1, 4)).pit(3)
-       .seg(15, s => s.en('bug', 4).plat(6, 2, 2).plat(9, 4, 2).item('big', 9, 5).en('bug', 11).deco('cycle', 13, { col: '#3aa6a6' }))
+       .seg(15, s => s.en('dog', 4).plat(6, 2, 2).plat(9, 4, 2).item('big', 9, 5).en('pup', 11).deco('cycle', 13, { col: '#3aa6a6' }))
        .goal('HOSTEL OFFICE');
     },
   },
@@ -91,19 +91,19 @@ const LEVELS = [
     boss: { type: 'quiz', title: 'POP QUIZ', how: 'PICK THE RIGHT ANSWER BEFORE THE TIMER RUNS OUT.', cats: ['campus', 'campus', 'general'], secs: 13 },
     build(b) {
       b.seg(14, s => s.sign(2, '9 AM CLASS!').deco('cycle', 5).coins(6, 1, 5).deco('tree', 11))
-       .seg(12, s => s.deco('lamp', 1).item('milk', 3, 2).en('bug', 5).plat(7, 2, 3).coins(7, 3, 3))
+       .seg(12, s => s.deco('lamp', 1).item('milk', 3, 2).en('dog', 5).plat(7, 2, 3).coins(7, 3, 3))
        .pit(3, s => s.arc(0, 3, 4))
        .seg(10, s => s.coins(1, 1, 3).en('plane', 6, 3).deco('vend', 8))
        .up().seg(6, s => s.coins(1, 1, 4))
-       .up().seg(8, s => s.check(1).en('bug', 5).deco('bush', 2))
+       .up().seg(8, s => s.check(1).en('dog', 5).deco('bush', 2))
        .pit(3).seg(4, s => s.coins(1, 1, 2)).pit(3)
        .down(2).seg(8, s => s.sign(2, '3D PRINTED BRIDGE').deco('tree', 6))
        .pit(10, s => s.plat(0, 1, 2).plat(2, 2, 6).plat(8, 1, 2).coins(2, 3, 6).en('plane', 5, 5))
-       .seg(12, s => s.en('bug', 3).plat(5, 2, 3).item('chai', 6, 3).en('bug', 9).deco('lamp', 11))
+       .seg(12, s => s.en('dog', 3).plat(5, 2, 3).item('chai', 6, 3).en('pup', 9).deco('lamp', 11))
        .seg(4, s => s.sign(0, 'SHUTTLE STOP'))
        .pit(9, s => s.mover(0, 0, 3, 'x', 6, 0.6, 'shuttle').coins(3, 2, 4))
        .seg(14, s => s.wall(3, 1, 2).en('plane', 8, 3).coins(8, 1, 4).deco('tree', 12))
-       .pit(3, s => s.arc(0, 3, 4)).seg(8, s => s.en('bug', 4)).pit(2)
+       .pit(3, s => s.arc(0, 3, 4)).seg(8, s => s.en('dog', 4)).pit(2)
        .seg(13, s => s.plat(2, 2, 2).plat(5, 4, 2).item('big', 5, 5).coins(8, 1, 3).deco('bench', 9))
        .goal('ACAD BLOCK A');
     },
@@ -228,7 +228,7 @@ const LEVELS = [
     boss: { type: 'catch', title: 'CAP TOSS', how: 'CATCH THE CAPS AND DEGREES. DODGE THE BACKLOGS!', good: ['CAP', 'DEGREE', 'MEDAL'], bad: 'BACKLOG', secs: 28 },
     build(b) {
       b.seg(14, s => s.deco('banner', 1, { text: 'CONVOCATION', col: '#b3262e' }).coins(4, 1, 8).deco('tree', 12))
-       .seg(12, s => s.deco('flags', 0, { w: 12 }).item('milk', 2, 2).en('bug', 4).plat(6, 2, 3).coins(6, 3, 3).en('plane', 9, 4))
+       .seg(12, s => s.deco('flags', 0, { w: 12 }).item('milk', 2, 2).en('dog', 4).plat(6, 2, 3).coins(6, 3, 3).en('plane', 9, 4))
        .pit(3, s => s.arc(0, 3, 4)).seg(4, s => s.coins(1, 1, 2)).pit(3).seg(6, s => s.en('clock', 3))
        .up().seg(6, s => s.coins(1, 1, 4))
        .up().seg(8, s => s.check(1).en('phone', 5, 3).item('chai', 3, 2))
@@ -243,7 +243,7 @@ const LEVELS = [
        .seg(12, s => s.en('clock', 3).en('clock', 7).en('email', 9, 3).deco('tree', 10))
        .seg(14, s => s.spring(2).plat(4, 5, 3).item('big', 5, 6).plat(9, 5, 2).item('big', 9, 6).en('book', 11))
        .pit(3).seg(3, s => s.coins(1, 1, 1)).pit(3).seg(3, s => s.coins(1, 1, 1)).pit(3)
-       .seg(16, s => s.deco('flags', 0, { w: 16 }).coins(2, 1, 10).en('bug', 6).en('bug', 11).item('chai', 8, 3))
+       .seg(16, s => s.deco('flags', 0, { w: 16 }).coins(2, 1, 10).en('dog', 6).en('pup', 11).item('chai', 8, 3))
        .goal('CONVOCATION HALL');
     },
   },

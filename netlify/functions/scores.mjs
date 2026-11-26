@@ -74,6 +74,11 @@ export async function handle(req, store, ip = 'unknown', adminKey = '') {
         unscored: Object.keys(claims).filter(r => !scored.has(r)).map(r => ({ roll: r, alias: aliases[r] || '' })) });
     }
     if (body.op === 'rename') {
+      if (id.startsWith('name:')) {   // older row without a roll number: edit its stored name
+        const row = board.find(e => rowId(e) === id), n = cleanName(body.name);
+        if (!row) return json({ error: 'not found' }, 404); if (!n) return json({ error: 'name cannot be empty' }, 400);
+        row.name = n; await store.setJSON('board', board); return json({ ok: true, name: n, id: rowId(row) });
+      }
       if (!ROLL.test(roll)) return json({ error: 'bad roll' }, 400);
       const n = cleanName(body.name); if (n) aliases[roll] = n; else delete aliases[roll];
       await store.setJSON('aliases', aliases); return json({ ok: true, name: n || roll });

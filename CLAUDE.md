@@ -41,6 +41,13 @@ with a boss mini-game, grades/CGPA, placement result, ending, share card, local 
 | `11-main.js` | boot, loop, `layout()`, name + share dialogs | shell |
 `src/index.html` is the page shell (canvas, touch pad, dialogs); `src/styles.css` the console/phone layout.
 
+## Dogs and cycles (v1.3)
+- Enemies `dog` (grumpy: chases + bites; landing on it only calms it, calm>0 = sits) and `pup` (friendly; ↓ beside it pets: +1 heart).
+  Dogs are never killed (killEnemy → calmDog). A calmed grumpy dog can be petted and becomes friendly. Logic in 07-play.js (def.dog).
+  Disclaimer lives on How to Play page 2 and README — keep it if you touch dogs.
+- Parked `cycle` decorations are rideable (`bikes` in PlayScene): run into one → p.bike, speed ×1.55; a hit knocks you off (no heart lost).
+- How to Play has 2 pages (controls + power-ups / campus tips).
+
 ## Global Hall of Fame
 - Players are identified by a 7-digit ROLL NUMBER (stored in Save.data.name; Save.data.token is the device secret).
   The first device to use a roll claims it (server keeps sha256(token) in blob `claims`); others get "already taken".

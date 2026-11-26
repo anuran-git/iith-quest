@@ -284,28 +284,51 @@ function OptionsScene() {
   };
 }
 
+// Two pages: 1 = controls + items, 2 = campus tips (dogs, cycles, grading) + notes
 function HelpScene() {
-  let t = 0;
+  let t = 0, page = 0;
   const k = Input.bindings, n = c => Input.keyName(c), two = (a, b) => b ? n(a) + '  OR  ' + n(b) : n(a);
   const rows = [['MOVE', n(k.left[0]) + ' ' + n(k.right[0]) + (k.left[1] && k.right[1] ? '  OR  ' + n(k.left[1]) + ' ' + n(k.right[1]) : ''), 'STICK'],
     ['JUMP', two(k.jump[0], k.jump[1]), 'A BUTTON'], ['DASH', two(k.dash[0], k.dash[1]), 'B BUTTON'], ['PAUSE', two(k.pause[0], k.pause[1] || 'Escape'), 'START']];
   const legend = [[Art.coin[0], 'CREDIT'], [Art.item.big, '+5'], [Art.item.milk, 'GROW'], [Art.item.chai, '+1 ♥'], [Art.item.maggi, 'INVINCIBLE'], [Art.item.clock, '+15 SEC']];
+  const tips = [
+    [Art.enemy.dog[0], 'GRUMPY DOG', ['BITES! HOP ON IT', 'TO CALM IT DOWN']],
+    [Art.enemy.pup[0], 'FRIENDLY DOG', ['PRESS ↓ BESIDE', 'IT TO PET: +♥']],
+    [World.deco({ type: 'cycle' }, 'morning'), 'CYCLE', ['RUN INTO IT TO', 'RIDE. FASTER!']],
+  ];
+  const leave = () => { Sound.sfx('back'); Game.go(TitleScene()); };
   return {
-    update() { t++; if (t > 10 && (Input.cancel() || Input.confirm() || Input.tap)) { Sound.sfx('back'); Game.go(TitleScene()); } },
+    update() {
+      t++; if (t < 10) return;
+      if (Input.cancel()) return leave();
+      if (Input.pressed.left || Input.pressed.right) { page = 1 - page; Sound.sfx('select'); return; }
+      if (Input.confirm() || Input.tap) { if (page === 0) { page = 1; Sound.sfx('select'); } else leave(); }
+    },
     draw(ctx) {
-      drawBackdrop(ctx, 'morning', t, 0.72);
+      drawBackdrop(ctx, 'morning', t, 0.78);
       Font.draw(ctx, 'HOW TO PLAY', W / 2, 8, '#fff3c4', { align: 'center', scale: 2, shadow: C.ink });
-      Font.draw(ctx, 'KEYBOARD', 132, 30, '#f2c14e', { align: 'center' }); Font.draw(ctx, 'TOUCH / PAD', 250, 30, '#f2c14e', { align: 'center' });
-      rows.forEach((r, i) => { Font.draw(ctx, r[0], 20, 42 + i * 11, '#9fe3f0'); Font.draw(ctx, r[1], 132, 42 + i * 11, C.white, { align: 'center' }); Font.draw(ctx, r[2], 250, 42 + i * 11, C.white, { align: 'center' }); });
-      // slot width follows each label, so long labels (INVINCIBLE) never run into the next one
-      const lw = legend.map(l => Math.max(Font.width(l[1]), l[0].width)), gap = (W - 16 - lw.reduce((a, b) => a + b, 0)) / legend.length;
-      let lx = 8 + gap / 2;
-      legend.forEach((l, i) => { const cx = Math.round(lx + lw[i] / 2); ctx.drawImage(l[0], cx - (l[0].width >> 1), 92); Font.draw(ctx, l[1], cx, 108, '#e6e0d4', { align: 'center' }); lx += lw[i] + gap; });
-      Font.draw(ctx, 'JUMP ON ENEMIES TO STOMP THEM. SLEEP CLOUDS', W / 2, 124, C.white, { align: 'center' });
-      Font.draw(ctx, "CAN'T BE STOMPED. BEAT THE DEADLINE, THEN THE BOSS.", W / 2, 134, C.white, { align: 'center' });
-      Font.draw(ctx, 'CREDITS + SPEED + BOSS SCORE = YOUR GRADE.', W / 2, 144, '#9be88a', { align: 'center' });
-      Font.draw(ctx, 'STUDENT-MADE. NOT AN OFFICIAL IIT HYDERABAD PRODUCT.', W / 2, 160, '#8a8f98', { align: 'center' });
-      Font.draw(ctx, 'PRESS ANY BUTTON TO GO BACK', W / 2, 170, '#f2c14e', { align: 'center' });
+      if (page === 0) {
+        Font.draw(ctx, 'KEYBOARD', 140, 32, '#f2c14e', { align: 'center' }); Font.draw(ctx, 'TOUCH / PAD', 256, 32, '#f2c14e', { align: 'center' });
+        rows.forEach((r, i) => { const y = 47 + i * 14; Font.draw(ctx, r[0], 22, y, '#9fe3f0'); Font.draw(ctx, r[1], 140, y, C.white, { align: 'center' }); Font.draw(ctx, r[2], 256, y, C.white, { align: 'center' }); });
+        Font.draw(ctx, 'POWER-UPS', W / 2, 108, '#f2c14e', { align: 'center' });
+        // slot width follows each label, so long labels (INVINCIBLE) never run into the next one
+        const lw = legend.map(l => Math.max(Font.width(l[1]), l[0].width)), gap = (W - 16 - lw.reduce((a, b) => a + b, 0)) / legend.length;
+        let lx = 8 + gap / 2;
+        legend.forEach((l, i) => { const cx = Math.round(lx + lw[i] / 2); ctx.drawImage(l[0], cx - (l[0].width >> 1), 122); Font.draw(ctx, l[1], cx, 138, '#e6e0d4', { align: 'center' }); lx += lw[i] + gap; });
+      } else {
+        tips.forEach((tp, i) => {
+          const cx = 56 + i * 104; big(ctx, tp[0], cx - tp[0].width, 58 - tp[0].height * 2, 2);
+          Font.draw(ctx, tp[1], cx, 63, '#f2c14e', { align: 'center' });
+          tp[2].forEach((l, j) => Font.draw(ctx, l, cx, 75 + j * 10, C.white, { align: 'center' }));
+        });
+        Font.draw(ctx, 'STOMP THE OTHER ENEMIES. BEAT THE', W / 2, 101, C.white, { align: 'center' });
+        Font.draw(ctx, 'DEADLINE, THEN THE BOSS.', W / 2, 110, C.white, { align: 'center' });
+        Font.draw(ctx, 'CREDITS + SPEED + BOSS = YOUR GRADE', W / 2, 122, '#9be88a', { align: 'center' });
+        Font.draw(ctx, "THE MAKER DOESN'T HATE ANY DOGS OR", W / 2, 137, '#ffb0b0', { align: 'center' });
+        Font.draw(ctx, 'PROMOTE ANY ANIMAL CRUELTY.', W / 2, 146, '#ffb0b0', { align: 'center' });
+        Font.draw(ctx, 'STUDENT-MADE. NOT AN OFFICIAL IITH PRODUCT.', W / 2, 157, '#8a8f98', { align: 'center' });
+      }
+      Font.draw(ctx, (page === 0 ? '1/2   A: NEXT PAGE' : '2/2   A: BACK') + '   ← → PAGES', W / 2, 170, '#f2c14e', { align: 'center' });
     },
   };
 }

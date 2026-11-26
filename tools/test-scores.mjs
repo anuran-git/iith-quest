@@ -36,3 +36,9 @@ ok((await post({ action: 'admin', key: KEY, op: 'delete', id: '2401001' }, '7.7.
 ({ entries } = await get());
 ok(entries.length === 1, 'deleted row gone');
 ok((await handle(new Request('http://x', { method: 'POST', body: JSON.stringify({ action: 'admin', key: 'x', op: 'list' }) }), store, '1', '')).status === 403, 'admin disabled without ADMIN_KEY');
+
+await store.setJSON('board', [{ name: 'OLDNAME', char: 'boy', cgpa: 7, score: 100, offer: '', date: 1 }]);
+ok((await post({ action: 'admin', key: KEY, op: 'rename', id: 'name:OLDNAME', name: 'kabir' }, '7.7.7.8')).status === 200, 'admin renames an old (pre-roll) row');
+({ entries } = await get());
+ok(entries[0].name === 'KABIR', 'old row renamed: ' + entries[0].name);
+ok((await post({ action: 'admin', key: KEY, op: 'rename', id: 'name:KABIR', name: '  ' }, '7.7.7.8')).status === 400, 'empty name refused for old row');

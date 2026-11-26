@@ -53,9 +53,13 @@
     const d = await call('list');
     const rows = $('rows'); rows.replaceChildren();
     d.entries.forEach((e, i) => {
-      const inp = el('input', { value: e.alias, placeholder: e.roll ? e.roll : e.name, maxLength: 12, disabled: !e.roll });
+      const inp = el('input', { value: e.roll ? e.alias : e.name, placeholder: e.roll || 'name', maxLength: 12 });
       const acts = el('div', { className: 'acts' });
-      if (e.roll) acts.append(btn('Save name', 'go', async () => { const r = await call('rename', { roll: e.roll, name: inp.value }); inp.value = r.name === e.roll ? '' : r.name; msg(e.roll + ' now shows as ' + r.name); }));
+      acts.append(btn('Save name', 'go', async () => {
+        const r = await call('rename', { id: e.id, roll: e.roll, name: inp.value });
+        if (e.roll) inp.value = r.name === e.roll ? '' : r.name; else { inp.value = r.name; e.id = r.id; e.name = r.name; }
+        msg((e.roll || 'Old entry') + ' now shows as ' + r.name);
+      }));
       acts.append(btn('Delete score', 'bad', async () => { if (!confirm('Delete the score for ' + (e.roll || e.name) + '? This cannot be undone.')) return; await call('delete', { id: e.id }); msg('Deleted ' + (e.roll || e.name)); load(); }));
       if (e.claimed) acts.append(btn('Release roll no.', '', async () => { if (!confirm('Release ' + e.roll + '? Its score stays, but any device can claim the number again.')) return; await call('release', { roll: e.roll }); msg('Released ' + e.roll); load(); }));
       rows.append(el('tr', {}, [el('td', { textContent: i + 1 }),

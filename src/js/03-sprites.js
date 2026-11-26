@@ -160,8 +160,21 @@ const Art = (() => {
   }
 
   // ── Enemies (16x16, facing left). Second frame is generated: bottom rows mirrored ──
-  const EPAL = { K: C.ink, W: '#f4efe6', w: '#c9c2b4', R: '#d33c3c', G: '#6fbf4a', g: '#3f8a34', E: '#1a1423', B: '#3a3f55', C: '#7fe0e8', P: '#7a4fb0', D: '#59607a', Z: '#f4efe6', Y: C.gold };
+  const EPAL = { K: C.ink, W: '#f4efe6', w: '#c9c2b4', R: '#d33c3c', G: '#6fbf4a', g: '#3f8a34', E: '#1a1423', B: '#3a3f55', C: '#7fe0e8', P: '#7a4fb0', D: '#59607a', Z: '#f4efe6', Y: C.gold, O: '#a8693a', o: '#6e4223', F: '#ecdcb6', f: '#b8986a', T: '#ff8a9a' };
   const ENEMY_ROWS = {
+    // campus dogs. dog = grumpy (bites, red collar, frown). pup = friendly (blue collar, tongue out)
+    dog: [
+      '................', '................', '................', '...KK...........',
+      '..KooK..........', '.KOOOOK......KK.', 'KKKOOOOK....KoK.', 'KOEKOOOOK..KoK..',
+      'KOOOOOOOOKKOK...', 'KWKWOOOOOOOOOK..', '.KKRRROOOOOOOK..', '..KOOOOOOOoOOK..',
+      '..KOOKKKKKOOK...', '..KOK....KOK....', '..KOK....KOK....', '..KK.....KK.....',
+    ],
+    pup: [
+      '................', '................', '................', '...KK........K..',
+      '..KffK......KfK.', '.KFFFFK.....KfK.', '.KFFFFFK...KfK..', 'KFEFFFFFK.KfK...',
+      'KFFFFFFFFKKFK...', 'KKKFFFFFFFFFFK..', '.KTCCCFFFFFFFK..', '..KFFFFFFFfFFK..',
+      '..KFFKKKKKFFK...', '..KFK....KFK....', '..KFK....KFK....', '..KK.....KK.....',
+    ],
     bug: [
       '................', '................', '................', '................',
       '..K........K....', '...K......K.....', '....KKKKKK......', '...KGGGGGGKK....',

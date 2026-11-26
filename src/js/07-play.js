@@ -6,6 +6,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 const ENEMY_DEFS = {
   // box = hit box inside the 16x16 sprite [x, y, w, h]; stomp:false = cannot be jumped on
+  // dogs never get hurt: landing on a grumpy dog only calms it (it sits for a while); friendly dogs can be petted (↓)
+  dog:     { ai: 'walk', speed: 0.5, chase: 1.15, dog: true, box: [1, 6, 13, 9] },
+  pup:     { ai: 'wander', speed: 0.3, dog: true, friendly: true, box: [1, 6, 13, 9] },
   bug:     { ai: 'walk', speed: 0.45, box: [2, 7, 11, 8] },
   clock:   { ai: 'walk', speed: 0.95, box: [2, 3, 11, 13] },
   book:    { ai: 'hop', speed: 0.6, every: 75, box: [1, 4, 14, 10] },
@@ -67,15 +70,15 @@ function PlayScene(index) {
   const tiles = World.layers(L.theme).tiles;
   const camY = ROWS * T - H;
   const totalTime = L.time * 60;
-  const p = { x: 0, y: 0, w: 10, h: 20, vx: 0, vy: 0, face: 1, onGround: false, coyote: 0, jbuf: 0, dashT: 0, dashCd: 0, airDash: false, inv: 0, power: 0, boost: 0, hp: TUNE.hearts, ride: null, big: false, growT: 0, wantBig: false };
-  let coins, items, enemies, movers, springs, checks, goal;
+  const p = { x: 0, y: 0, w: 10, h: 20, vx: 0, vy: 0, face: 1, onGround: false, coyote: 0, jbuf: 0, dashT: 0, dashCd: 0, airDash: false, inv: 0, power: 0, boost: 0, hp: TUNE.hearts, ride: null, big: false, growT: 0, wantBig: false, bike: null };
+  let coins, items, enemies, movers, springs, checks, goal, bikes;
   let shots = [], parts = [], texts = [];
   let cam = 0, frame = 0, timeLeft = totalTime, credits = 0, retries = 0, shake = 0;
   let state = 'ready', stateT = 0, paused = false, pauseMenu = null, ctrl = null, sub = null;
   let checkpoint = { x: L.spawn.x, y: L.spawn.y }, god = false;   // god: test-only invincibility
 
   function spawnEnemies() {
-    enemies = L.ents.filter(e => e.type === 'enemy').map(e => ({ kind: e.kind, def: ENEMY_DEFS[e.kind], x: e.x, y: e.y, x0: e.x, y0: e.y, vx: 0, vy: 0, dir: -1, t: Math.floor(e.x) % 97, alive: true, dead: 0, onGround: false }));
+    enemies = L.ents.filter(e => e.type === 'enemy').map(e => ({ kind: e.kind, def: ENEMY_DEFS[e.kind], x: e.x, y: e.y, x0: e.x, y0: e.y, vx: 0, vy: 0, dir: -1, t: Math.floor(e.x) % 97, alive: true, dead: 0, onGround: false, calm: 0, petted: false, friendly: !!(ENEMY_DEFS[e.kind] && ENEMY_DEFS[e.kind].friendly) }));
     movers = L.ents.filter(e => e.type === 'mover').map(e => ({ x0: e.x, y0: e.y, x: e.x, y: e.y, w: e.w, h: 6, axis: e.axis, range: e.range, speed: e.speed, skin: e.skin, t: 0, dx: 0, dy: 0 }));
     shots = [];
   }
@@ -85,11 +88,13 @@ function PlayScene(index) {
     springs = L.ents.filter(e => e.type === 'spring').map(e => ({ x: e.x, y: e.y, t: 0 }));
     checks = L.ents.filter(e => e.type === 'check').map(e => ({ x: e.x, y: e.y, on: false }));
     goal = L.ents.find(e => e.type === 'goal');
+    bikes = L.decor.filter(d => d.type === 'cycle').map(d => ({ d, x: d.x, x0: d.x, gy: d.gy, taken: false, cool: 0 }));   // parked cycles you can ride
     spawnEnemies(); placePlayer();
     cam = clamp(p.x - 130, 0, L.w * T - W);
     Sound.music(L.song);
   }
-  function placePlayer() { p.x = checkpoint.x; p.y = checkpoint.y; p.vx = p.vy = 0; p.hp = TUNE.hearts; p.inv = retries ? 60 : 0; p.power = 0; p.dashT = 0; p.ride = null; p.face = 1; p.big = p.wantBig = false; p.growT = 0; p.w = SIZE.small.w; p.h = SIZE.small.h; }
+  function placePlayer() { p.x = checkpoint.x; p.y = checkpoint.y; p.vx = p.vy = 0; p.hp = TUNE.hearts; p.inv = retries ? 60 : 0; p.power = 0; p.dashT = 0; p.ride = null; p.face = 1; p.big = p.wantBig = false; p.growT = 0; p.w = SIZE.small.w; p.h = SIZE.small.h;
+    p.bike = null; for (const b of bikes) { b.taken = false; b.x = b.x0; b.cool = 0; } }
 
   // ── effects ──
   function burst(x, y, col, n = 6) { for (let i = 0; i < n; i++) parts.push({ x, y, vx: rand(-1.5, 1.5), vy: rand(-2.2, 0.2), life: randi(14, 26), col }); }
@@ -107,6 +112,11 @@ function PlayScene(index) {
   }
   function hurt() {
     if (god || p.inv > 0 || p.power > 0 || state !== 'play') return;
+    if (p.bike) {   // CYCLE: fall off the cycle, keep the heart; it stays parked where you crashed
+      const b = p.bike; p.bike = null; b.taken = false; b.x = Math.round(p.x + p.w / 2 - 11); b.gy = Math.round(p.y + p.h); b.cool = 120;
+      p.inv = TUNE.invuln; p.vy = -2.5; p.dashT = 0; shake = 6; burst(p.x + 5, p.y + 16, '#c9ced6', 8);
+      say(p.x + 5, p.y - 10, 'FELL OFF!', '#ffb0b0'); Sound.sfx('shrink'); return;
+    }
     if (p.big) {   // GROW: lose the size, keep the heart
       setSize(false); p.inv = TUNE.invuln; p.dashT = 0; shake = 6; burst(p.x + 5, p.y + 8, '#fff3c4', 8);
       say(p.x + 5, p.y - 10, 'SHRUNK!', '#ffb0b0'); return;
@@ -133,9 +143,10 @@ function PlayScene(index) {
       if (frame % 2 === 0) parts.push({ x: p.x + 5, y: p.y + rand(4, 18), vx: -p.face * 0.5, vy: 0, life: 10, col: '#f4efe6' });
     } else {
       const ax = (I.down.right ? 1 : 0) - (I.down.left ? 1 : 0);
-      const max = TUNE.run * (p.power > 0 ? 1.2 : 1);
-      if (ax) { p.vx = clamp(p.vx + ax * TUNE.accel, -max, max); p.face = ax; }
+      const max = TUNE.run * (p.power > 0 ? 1.2 : 1) * (p.bike ? 1.55 : 1);
+      if (ax) { p.vx = clamp(p.vx + ax * TUNE.accel * (p.bike ? 1.25 : 1), -max, max); p.face = ax; }
       else { p.vx *= p.onGround ? 0.72 : 0.92; if (Math.abs(p.vx) < 0.06) p.vx = 0; }
+      if (p.bike && p.onGround && Math.abs(p.vx) > 2.4 && frame % 3 === 0) parts.push({ x: p.x + 5 - p.face * 8, y: p.y + p.h - 2, vx: -p.face * 0.6, vy: -0.2, life: 10, col: '#c9ced6' });
       if (p.boost > 0) p.boost--;   // springs float like a held jump
       p.vy = Math.min(p.vy + (p.vy < 0 && (I.down.jump || p.boost > 0) ? TUNE.gravUp : TUNE.gravDown), TUNE.maxFall);
     }
@@ -166,9 +177,20 @@ function PlayScene(index) {
   // ── enemies ──
   function updateEnemy(e) {
     const d = e.def; e.t++;
-    if (d.ai === 'walk' || d.ai === 'hop') {
+    if (e.calm > 0) e.calm--;
+    if (d.ai === 'walk' || d.ai === 'hop' || d.ai === 'wander') {
       const b = { x: e.x + 2, y: e.y + 4, w: 12, h: 12, vx: 0, vy: Math.min(e.vy + 0.4, 6) };
-      if (d.ai === 'walk') b.vx = e.dir * d.speed;
+      if (d.dog && (e.calm > 0 || e.friendly)) {   // sitting, or a friendly dog ambling about
+        b.vx = e.calm > 0 || (e.t >> 6) % 3 === 0 ? 0 : e.dir * 0.3;
+        if (e.calm <= 0 && Math.abs(e.x - e.x0) > 28) e.dir = e.x > e.x0 ? -1 : 1;
+      } else if (d.ai === 'walk') {
+        b.vx = e.dir * d.speed;
+        if (d.chase) {   // grumpy dog: spots you ahead of it and charges, barking
+          const dx = p.x - e.x, seen = Math.abs(dx) < 80 && Math.abs(p.y - e.y) < 28 && Math.sign(dx) === e.dir;
+          if (seen) { b.vx = e.dir * d.chase; if (!e.barked) { e.barked = true; Sound.sfx('woof'); say(e.x + 8, e.y - 4, 'WOOF!', '#ffb0b0'); } }
+          else if (Math.abs(dx) > 120) e.barked = false;
+        }
+      }
       else {
         if (e.onGround && e.t % d.every === 0) {
           const ax = Math.floor((b.x + 6 + e.dir * 18) / T), ay = Math.floor((b.y + b.h + 2) / T);
@@ -181,7 +203,7 @@ function PlayScene(index) {
       moveBody(L, b);
       e.x = b.x - 2; e.y = b.y - 4; e.vy = b.vy; e.onGround = b.onGround;
       if (b.hitWall) e.dir *= -1;
-      else if (d.ai === 'walk' && b.onGround) {
+      else if ((d.ai === 'walk' || d.ai === 'wander') && b.onGround) {
         const fx = Math.floor((e.dir > 0 ? b.x + b.w + 1 : b.x - 1) / T);
         const under = tileAt(L, fx, Math.floor((b.y + b.h + 2) / T)), front = tileAt(L, fx, Math.floor((b.y + b.h - 2) / T));
         if ((!isSolid(under) && under !== TILE.ONEWAY) || front === TILE.HAZARD) e.dir *= -1;
@@ -203,7 +225,16 @@ function PlayScene(index) {
       }
     }
   }
-  function killEnemy(e) { e.alive = false; e.dead = 18; burst(e.x + 8, e.y + 8, '#f4efe6', 8); }
+  function killEnemy(e) {
+    if (e.def.dog) { calmDog(e); return; }   // dogs are never hurt
+    e.alive = false; e.dead = 18; burst(e.x + 8, e.y + 8, '#f4efe6', 8);
+  }
+  function calmDog(e) { if (e.calm <= 0) say(e.x + 8, e.y - 4, 'WOOF?', '#fff3c4'); e.calm = 200; e.barked = false; }
+  function petDog(e) {
+    e.petted = true; e.friendly = true; e.calm = 0; Sound.sfx('pet');
+    for (let i = 0; i < 6; i++) parts.push({ x: e.x + 8 + rand(-6, 6), y: e.y + 4, vx: rand(-0.4, 0.4), vy: rand(-1.2, -0.5), life: 30, col: '#ff8a9a' });
+    if (p.hp < TUNE.hearts) { p.hp++; say(e.x + 8, e.y - 6, 'GOOD DOG! +♥', '#ffb0b0'); } else say(e.x + 8, e.y - 6, 'GOOD DOG!', '#ffb0b0');
+  }
 
   function updateWorld() {
     // movers first, so the rider is carried before their own physics
@@ -230,6 +261,13 @@ function PlayScene(index) {
       else if (it.kind === 'clock') { timeLeft += 15 * 60; Sound.sfx('clock'); say(it.x + 6, it.y - 6, 'EXTENSION +15S', '#9fd8ff'); }
       else if (it.kind === 'big') { credits += 5; Sound.sfx('big'); say(it.x + 6, it.y - 6, '+5 CREDITS', '#f2c14e'); }
     }
+    // cycles: run into a parked one to ride it (faster; getting hit only knocks you off)
+    for (const bk of bikes) {
+      if (bk.cool > 0) bk.cool--;
+      if (!p.bike && !bk.taken && bk.cool <= 0 && overlap(box, { x: bk.x + 3, y: bk.gy - 13, w: 16, h: 13 })) {
+        p.bike = bk; bk.taken = true; Sound.sfx('bike'); say(p.x + 5, p.y - 10, 'CYCLE! FASTER', '#9fe3f0');
+      }
+    }
     // springs
     for (const s of springs) { if (s.t > 0) s.t--; if (p.vy > 0 && overlap(box, { x: s.x + 1, y: s.y, w: 14, h: 8 })) { p.vy = -7.6; p.boost = 26; p.airDash = false; s.t = 12; Sound.sfx('spring'); } }
     // checkpoints
@@ -242,6 +280,16 @@ function PlayScene(index) {
       if (e.x < cam - 48 || e.x > cam + W + 48) continue;
       updateEnemy(e);
       const b = e.def.box, eb = { x: e.x + b[0], y: e.y + b[1], w: b[2], h: b[3] };
+      if (e.def.dog) {
+        const near = overlap({ x: box.x - 8, y: box.y, w: box.w + 16, h: box.h }, eb);
+        e.near = near && p.onGround && !e.petted && (e.friendly || e.calm > 0);
+        if (e.near && Input.pressed.down) { petDog(e); continue; }   // ↓ next to a calm or friendly dog
+        if (!overlap(box, eb) || e.friendly || e.calm > 0) continue;
+        if (p.power > 0 || god) { calmDog(e); continue; }
+        if (p.vy > 0.4 && p.y + p.h - p.vy <= eb.y + eb.h * 0.6) { calmDog(e); p.vy = Input.down.jump ? -5.2 : -3.6; p.airDash = false; Sound.sfx('jump'); continue; }
+        if (p.inv <= 0 && !p.bike) say(p.x + 5, p.y - 14, 'BITE!', '#ff8a8a');
+        hurt(); continue;
+      }
       if (!overlap(box, eb)) continue;
       if (p.power > 0 || god) { killEnemy(e); Sound.sfx('stomp'); }
       else if (e.def.stomp !== false && p.vy > 0.4 && p.y + p.h - p.vy <= eb.y + eb.h * 0.6) {
@@ -320,6 +368,7 @@ function PlayScene(index) {
     const x = Math.round(p.x + p.w / 2 - img.width / 2 - ox), y = Math.round(p.y + p.h - img.height - camY);
     if (p.dashT > 0) { ctx.globalAlpha = 0.35; ctx.drawImage(img, x - p.face * 8, y); ctx.globalAlpha = 1; }
     ctx.drawImage(img, x, y);
+    if (p.bike) { let c = World.deco(p.bike.d, L.theme); if (p.face < 0) c = Art.flip(c); ctx.drawImage(c, Math.round(p.x + p.w / 2 - 11 - ox), Math.round(p.y + p.h - 13 - camY)); }
   }
   function drawMover(ctx, m, ox) {
     const x = Math.round(m.x - ox), y = Math.round(m.y - camY);
@@ -354,11 +403,12 @@ function PlayScene(index) {
     ctx.save(); ctx.translate(0, sy);
     // decorations
     for (const d of L.decor) {
-      if (d.type === 'hint') continue;
+      if (d.type === 'hint' || d.type === 'cycle') continue;
       const c = World.deco(d, L.theme), x = d.x - ox;
       if (x > W || x + c.width < 0) continue;
       ctx.drawImage(c, x, d.gy - c.height - camY);
     }
+    for (const bk of bikes) if (!bk.taken) { const c = World.deco(bk.d, L.theme), x = bk.x - ox; if (x > -30 && x < W + 10) ctx.drawImage(c, x, bk.gy - c.height - camY); }
     // goal door
     if (goal) {
       const gx = goal.x - ox, gy = goal.y - camY;
@@ -400,8 +450,11 @@ function PlayScene(index) {
     for (const e of enemies) {
       if (e.x < ox - 20 || e.x > ox + W + 20) continue;
       if (!e.alive) { if (e.dead > 0) { ctx.globalAlpha = e.dead / 18; ctx.drawImage(Art.enemy[e.kind][0], 0, 0, 16, 16, Math.round(e.x - ox), Math.round(e.y - camY) + 10, 16, 6); ctx.globalAlpha = 1; } continue; }
-      let img = Art.enemy[e.kind][(frame >> 3) % 2]; if (e.dir > 0) img = Art.flip(img);
-      ctx.drawImage(img, Math.round(e.x - ox), Math.round(e.y - camY));
+      const still = e.def.dog && (e.calm > 0 || (e.friendly && (e.t >> 6) % 3 === 0));
+      let img = Art.enemy[e.kind][still ? 0 : (frame >> 3) % 2]; if (e.dir > 0) img = Art.flip(img);
+      ctx.drawImage(img, Math.round(e.x - ox), Math.round(e.y - camY) + (e.calm > 0 ? 1 : 0));
+      if (e.near && state === 'play') Font.draw(ctx, '↓ PET', Math.round(e.x - ox) + 8, Math.round(e.y - camY) - 15, '#fff3c4', { align: 'center', shadow: C.ink });
+      else if (e.calm > 0 && (frame >> 4) % 2) Font.draw(ctx, '?', Math.round(e.x - ox) + 8, Math.round(e.y - camY) - 6, '#fff3c4', { align: 'center', shadow: C.ink });
     }
     for (const s of shots) {
       const x = Math.round(s.x - ox), y = Math.round(s.y - camY);
@@ -434,5 +487,5 @@ function PlayScene(index) {
 
   setup();
   // `debug` is used by tools/test.js (bot play); not needed by the game itself
-  return { update, draw, debug: { L, p, hurt: () => hurt(), get items() { return items; }, get state() { return state; }, get movers() { return movers; }, get enemies() { return enemies; }, get credits() { return credits; }, set god(v) { god = !!v; } } };
+  return { update, draw, debug: { L, p, hurt: () => hurt(), get items() { return items; }, get state() { return state; }, get movers() { return movers; }, get enemies() { return enemies; }, get credits() { return credits; }, get bikes() { return bikes; }, get dogs() { return enemies.filter(e => e.def.dog); }, petDog: e => petDog(e), set god(v) { god = !!v; } } };
 }
