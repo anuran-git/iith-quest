@@ -46,7 +46,7 @@ with a boss mini-game, grades/CGPA, placement result, ending, share card, local 
   Dogs are never killed (killEnemy → calmDog). A calmed grumpy dog can be petted and becomes friendly. Logic in 07-play.js (def.dog).
   Disclaimer lives on How to Play page 2 and README — keep it if you touch dogs.
 - Parked `cycle` decorations are rideable (`bikes` in PlayScene): run into one → p.bike, speed ×1.55; a hit knocks you off (no heart lost).
-- How to Play has 2 pages (controls + power-ups / campus tips).
+- How to Play has 3 pages (controls + power-ups / around campus / goal + notes).
 
 ## Global Hall of Fame
 - Players are identified by a 7-digit ROLL NUMBER (stored in Save.data.name; Save.data.token is the device secret).
