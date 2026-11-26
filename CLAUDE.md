@@ -89,3 +89,8 @@ help legend (`09-scenes.js`, restore 5 items at 60px spacing). Run the tests.
 ## Hosting
 The global board needs a CLI (`npx netlify-cli deploy --build --prod`) or Git deploy; Netlify Drop does not run
 functions. `netlify.toml` runs `node build.js` and publishes `dist`; functions are found in `netlify/functions`.
+
+## SEO / link previews
+- Meta, Open Graph, Twitter and JSON-LD tags are in src/index.html; `__SITE_URL__` is replaced by build.js with Netlify's `URL` env var
+  (or `SITE_URL=https://your-domain` for a custom domain). build.js also writes robots.txt and sitemap.xml.
+- Preview image: src/public/og-image.png (1200x630). Regenerate with `node build.js && node tools/make-preview.js`.
